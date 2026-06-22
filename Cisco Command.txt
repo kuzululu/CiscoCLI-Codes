@@ -70,5 +70,4 @@ permit ip any any
  sh ip access-lists
  sh running-config | inc access-group
  show running-config
-show running-config interface vlan # !specifci vlan
-
+show running-config interface vlan # !specific vlan
