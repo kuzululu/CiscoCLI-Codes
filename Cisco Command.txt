@@ -1,0 +1,79 @@
+Cisco Command
+
+!Create VLAN 
+conf t
+vlan #
+name VlanName
+
+
+!assign port
+int vlan #
+int range port# range / int port#
+switchport mode access
+switchport access vlan #
+!veriy vlans
+sh vlan br
+
+
+!trunking if many switch 
+!notest: if error occurred “Command rejected: An interface whose trunk encapsulation is "Auto" can not be configured to "trunk" mode” type this cli firs “switchport trunk encapsulation dot1q” before “switchport mode trunk”
+
+int port# 
+switchport mode trunk
+!verify
+Sh cdp neigh !to show the trunking links
+sh int trunk
+
+
+
+CLI for SVI Switch 
+
+!SVI Configuration or creating a gateway
+conf t
+int vlan #
+ip address (g.w ip or first-host subnet mask)
+no shut
+
+!verify SVI
+sh ip int br | ex una
+sh ip int vlan #
+
+
+!optional enable Inter-vlan Routing if want to access each vlan ID
+ ip routing
+!verify 
+ sh ip route
+
+
+STILL IN SVI SWITCH
+!DHCP EXCLUDED ADDRESS
+ Ip dhcp excluded-address (ip address to be excluded in each vlans)
+
+!DHCP POOL 
+ ip dhcp pool VLANNAME-POOL
+network (ip address subnet mask)
+default-router (first host or gateway ip)
+dns-server (first host or gateway ip or consise dns 8.8.8.8)
+domain-name ServerNAme
+
+!Verify DCHP POOL
+sh ip dhcp binding
+sh ip dhcp pool
+show running-config | include excluded-address
+show run | section dhcp
+
+
+!EXTENDED ACL
+ ip  access-list extended Name-Policy
+deny ip SOURCE_NETWORK SOURCE_WILDCARD DEST_NETWORK DEST_WILDCARD
+permit ip any any
+
+!APPLY ACL
+ int vlan #
+ ip access-group Name-Policy in
+
+!VERIFY ACL
+ sh access-lists
+ sh ip access-lists
+ sh running-config | inc access-group
+

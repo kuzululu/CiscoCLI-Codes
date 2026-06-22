@@ -1,0 +1,246 @@
+CISCO PACKET TRACER COMMAND BIBLE
+VLAN • TRUNKING • SVI • DHCP • ACL • TROUBLESHOOTING • RESET
+=================================================
+BASIC NAVIGATION
+enable
+disable
+configure terminal
+end
+exit
+?
+show ?
+show running-config
+show startup-config
+
+
+
+
+
+=================================================
+SAVE CONFIGURATION
+copy running-config startup-config
+or
+write memory
+or
+wr
+=================================================
+HOSTNAME
+hostname SW1
+=================================================
+BASIC SECURITY
+enable secret pass
+line console 0
+password cisco
+login
+exit
+line vty 0 15
+password cisco
+login
+exit
+service password-encryption
+=================================================
+CREATE VLANS
+vlan 10
+name IT
+vlan 20
+name HR
+vlan 30
+name ACCOUNTING
+vlan 40
+name MARKETING
+vlan 50
+name EXECUTIVE
+vlan 60
+name SERVER
+=================================================
+VERIFY VLANS
+show vlan brief
+=================================================
+
+
+
+ASSIGN ACCESS PORTS
+interface fa0/1 or int range fa0/1 - 4
+switchport mode access
+switchport access vlan 10
+interface fa0/2
+switchport mode access
+switchport access vlan 20
+
+TRUNK PORTS
+interface g0/1
+switchport mode trunk
+switchport trunk allowed vlan 10,20,30,40,50,60
+=================================================
+VERIFY TRUNK
+show interfaces trunk
+=================================================
+SVI CONFIGURATION
+interface vlan 10
+ip address 192.168.10.1 255.255.255.0
+no shutdown
+interface vlan 20
+ip address 192.168.20.1 255.255.255.0
+no shutdown
+=================================================
+VERIFY SVI
+show ip interface brief
+show ip interface vlan 10
+=================================================
+ENABLE INTER-VLAN ROUTING
+ip routing
+=================================================
+VERIFY ROUTING
+show ip route
+=================================================
+DHCP EXCLUDED ADDRESS
+ip dhcp excluded-address 192.168.10.1
+==================================
+===============
+
+DHCP POOL
+ip dhcp pool VLAN10
+network 192.168.10.0 255.255.255.0
+default-router 192.168.10.1
+dns-server 192.168.10.1
+domain-name ServerName
+=================================================
+VERIFY DHCP
+show ip dhcp binding
+show ip dhcp pool
+=================================================
+STANDARD ACL
+access-list 10 deny host 192.168.10.10
+access-list 10 permit any
+=================================================
+
+
+EXTENDED ACL
+ip access-list extended HR-POLICY
+deny ip SOURCE_NETWORK SOURCE_WILDCARD DEST_NETWORK DEST_WILDCARD
+permit ip any any
+=================================================
+APPLY ACL
+interface vlan 20
+ip access-group HR-POLICY in
+=================================================
+REMOVE ACL
+interface vlan 20
+no ip access-group HR-POLICY in
+=================================================
+VERIFY ACL
+show access-lists
+show ip access-lists
+show running-config | include access-group
+=================================================
+INTERFACE COMMANDS
+interface fa0/1
+shutdown
+no shutdown
+description IT-PC
+=================================================
+VERIFY INTERFACES
+show interfaces status
+show ip interface brief
+=================================================
+MAC ADDRESS TABLE
+show mac address-table
+=================================================
+
+
+TROUBLESHOOTING COMMANDS
+show vlan brief
+show interfaces trunk
+show ip interface brief
+show ip route
+show access-lists
+show ip dhcp binding
+show running-config
+show startup-config
+show mac address-table
+=================================================
+DELETE SINGLE VLAN
+no vlan 20
+=================================================
+DELETE DHCP POOL
+no ip dhcp pool VLAN10
+=================================================
+
+DELETE ACL
+no ip access-list extended HR-POLICY
+=================================================
+DELETE SVI IP
+interface vlan 20
+no ip address
+=================================================
+RELOAD SWITCH
+reload
+=================================================
+ERASE STARTUP CONFIG
+erase startup-config
+or
+write erase
+=================================================
+
+DELETE VLAN DATABASE
+delete vlan.dat
+=================================================
+FACTORY RESET SWITCH
+enable
+write erase
+delete vlan.dat
+reload
+When Asked:
+Save configuration?
+Answer:
+no
+When Asked:
+Proceed with reload?
+Answer:
+yes
+When Asked:
+Initial Configuration Dialog?
+Answer:
+no
+=================================================
+MOST IMPORTANT SHOW COMMANDS
+show vlan brief
+show interfaces trunk
+show ip interface brief
+show ip route
+show access-lists
+show running-config
+show startup-config
+show ip dhcp binding
+show ip dhcp pool
+show mac address-table
+=================================================
+EMERGENCY COMMANDS
+show run
+show start
+wr
+reload
+erase startup-config
+write erase
+delete vlan.dat
+show access-lists
+show vlan brief
+show ip interface brief
+show ip route
+=================================================
+END OF COMMAND BIBLE
+1. Compute VLSM
+2. Create VLANs
+3. Assign access ports
+4. Create SVIs (Layer 3 Switch)
+5. ip routing
+6. Configure DHCP pools
+   - excluded-address
+   - network <network-address> <subnet-mask>
+   - default-router <gateway>
+   - dns-server
+7. Test DHCP
+8. Test inter-VLAN routing
+9. Apply ACL (kung meron)
+10. Save configuration
+
