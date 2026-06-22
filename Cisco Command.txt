@@ -71,3 +71,4 @@ permit ip any any
  sh running-config | inc access-group
  show running-config
 show running-config interface vlan # !specific vlan
+show ip interface vlan # !makikita rito ang inbound(in)
