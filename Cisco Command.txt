@@ -87,6 +87,13 @@ permit ip any any
  int vlan #
  ip access-group Name-Policy in
 
+!@Importante: Kung naka-apply pa ang ACL sa interface, magandang tanggalin muna:
+interface vlan #
+no ip access-group NAme-Policy in
+
+@Pagkatapos saka:
+no ip access-list extended HR-Policy
+
 !@remove acl policy
 conf t
 no ip access-list extended Name-policy
