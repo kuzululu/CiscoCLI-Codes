@@ -13,6 +13,16 @@ switchport access vlan #
 !veriy vlans
 sh vlan br
 
+!remove specific port in vlan
+conf t
+interface fa0/9
+no switchport access vlan #
+
+!or 
+conf t
+interface fa0/9
+switchport access vlan 1
+
 !@trunking if many switch 
 !notest: if error occurred “Command rejected: An interface whose trunk encapsulation is "Auto" can not be configured to "trunk" mode” type this cli firs “switchport trunk encapsulation dot1q” before “switchport mode trunk”
 
