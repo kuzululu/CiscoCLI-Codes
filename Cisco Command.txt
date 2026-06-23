@@ -65,6 +65,8 @@ sh ip dhcp binding
 sh ip dhcp pool
 show running-config | include excluded-address
 show run | section dhcp
+!remove dhcp pool VLANname
+no ip dhcp pool vlanName
 
 !@EXTENDED ACL
  ip  access-list extended Name-Policy
