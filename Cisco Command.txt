@@ -60,6 +60,16 @@ default-router (first host or gateway ip)
 dns-server (first host or gateway ip or consise dns 8.8.8.8)
 domain-name ServerNAme
 
+!optional if neccessary 
+!for end devices like servers, pc, printer
+conf t
+int port#
+ip add dhcp
+end
+
+!show ip of end devices
+sh ip int br | ex una
+
 !@Verify DCHP POOL
 sh ip dhcp binding
 sh ip dhcp pool
