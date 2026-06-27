@@ -1,5 +1,17 @@
 Cisco Command
 
+!@BASIC SECURITY
+enable secret pass
+line console 0
+password cisco
+login
+exit
+line vty 0 15
+password cisco
+login
+exit
+service password-encryption
+
 !@Create VLAN 
 conf t
 vlan #
