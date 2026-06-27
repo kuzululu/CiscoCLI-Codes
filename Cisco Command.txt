@@ -1,7 +1,6 @@
 Cisco Command
 
 !@BASIC SECURITY
-enable secret pass
 line console 0
 password cisco
 login
