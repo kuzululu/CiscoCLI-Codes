@@ -121,3 +121,76 @@ no deny ip 172.16.100.32 0.0.0.15 172.16.100.0 0.0.0.15
  show running-config
 show running-config interface vlan # !specific vlan
 show ip interface vlan # !makikita rito ang inbound(in)
+
+STEP 2 - Configure ang Switch Port ng Phone
+
+Halimbawa nakakabit ang phone sa Fa0/6
+
+conf t
+interface fa0/6
+ switchport mode access
+ switchport voice vlan 200
+ spanning-tree portfast
+ no shutdown
+end
+
+Verify:
+
+show run interface fa0/6
+
+Dapat ganito:
+
+switchport mode access
+switchport voice vlan 200
+
+STEP 6 - I-check ang IP Phone
+
+Click ang Phone
+
+Config → FastEthernet0
+
+Dapat:
+
+DHCP = ON
+STEP 7 - Hintayin ang Phone
+
+Makikita mo muna ang mga status gaya ng:
+
+Configuring IP
+
+o
+
+Requesting IP
+
+Kapag successful, magkakaroon ito ng:
+
+IP Address
+Subnet Mask
+Gateway
+STEP 8 - Verify sa L3 Switch
+show ip dhcp binding
+
+Kapag may lumabas na:
+
+172.16.100.2
+172.16.100.3
+
+ibig sabihin successful ang DHCP.
+
+STEP 9 - Tingnan ang Phone
+
+Pumunta sa
+
+GUI
+↓
+
+Settings
+↓
+
+Network Configuration
+
+Dapat makikita mo ang:
+
+IP Address
+Subnet Mask
+Default Gateway
