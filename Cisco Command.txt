@@ -122,75 +122,88 @@ no deny ip 172.16.100.32 0.0.0.15 172.16.100.0 0.0.0.15
 show running-config interface vlan # !specific vlan
 show ip interface vlan # !makikita rito ang inbound(in)
 
-STEP 2 - Configure ang Switch Port ng Phone
+Tamang Configuration
+Scenario 1 - Phone lang ang nakakabit
 
-Halimbawa nakakabit ang phone sa Fa0/6
+Halimbawa Fa0/6
 
 conf t
+
 interface fa0/6
  switchport mode access
  switchport voice vlan 200
  spanning-tree portfast
- no shutdown
-end
+Scenario 2 - PC → Phone → Switch
+PC
+ │
+Phone
+ │
+Switch
+interface fa0/6
+ switchport mode access
+ switchport access vlan 10
+ switchport voice vlan 200
 
-Verify:
+Dito:
 
-show run interface fa0/6
+PC → VLAN 10
+Voice → VLAN 200
 
-Dapat ganito:
+Ito ang totoong setup sa mga opisina.
 
-switchport mode access
-switchport voice vlan 200
+DHCP Pool
 
-STEP 6 - I-check ang IP Phone
+Ito ang kulang pa sa DHCP mo.
 
-Click ang Phone
+Sa Voice VLAN, mas maganda kung idagdag ang:
 
-Config → FastEthernet0
+option 150 ip 172.16.100.1
 
-Dapat:
+Kaya magiging:
 
-DHCP = ON
-STEP 7 - Hintayin ang Phone
+ip dhcp pool VOICE-VLAN
 
-Makikita mo muna ang mga status gaya ng:
+network 172.16.100.0 255.255.255.224
+default-router 172.16.100.1
+dns-server 8.8.8.8
+option 150 ip 172.16.100.1
+Isa pang napansin ko sa topology mo
 
-Configuring IP
+Sa notes mo nakalagay:
 
-o
+VLAN 10 IT
+Fa0/1-5
+IP Phones VLAN 200
+Fa0/6
 
-Requesting IP
+Ibig sabihin gusto mo ang Fa0/6 ay para sa phone.
 
-Kapag successful, magkakaroon ito ng:
+Huwag mong ilagay sa VLAN 200 gamit ang switchport access vlan 200.
 
-IP Address
-Subnet Mask
-Gateway
-STEP 8 - Verify sa L3 Switch
-show ip dhcp binding
+Gawin mo lang:
 
-Kapag may lumabas na:
+interface fa0/6
+ switchport mode access
+ switchport voice vlan 200
+Ito ang gusto kong sequence para sa project mo
 
-172.16.100.2
-172.16.100.3
+Dahil ginagawa mo ito bilang school project, mas magiging malinis kung ganito ang pagkakasunod:
 
-ibig sabihin successful ang DHCP.
-
-STEP 9 - Tingnan ang Phone
-
-Pumunta sa
-
-GUI
-↓
-
-Settings
-↓
-
-Network Configuration
-
-Dapat makikita mo ang:
-
-IP Address
-Subnet Mask
-Default Gateway
+Phase 1
+✅ Create VLAN 10–70
+✅ Create VLAN 200 (Voice)
+✅ Assign Access Ports
+✅ Configure Trunk
+Phase 2
+✅ Create SVIs
+✅ Enable ip routing
+✅ Configure DHCP Pools
+✅ Test PCs
+Phase 3
+✅ Configure Voice VLAN
+✅ Configure IP Phones
+✅ Test kung nakakakuha ng IP ang phone
+Phase 4
+✅ Add Cisco 2911 Router
+✅ Configure CME (telephony-service, ephone-dn, ephone)
+✅ Test phone-to-phone calls
