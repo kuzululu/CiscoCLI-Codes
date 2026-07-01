@@ -122,6 +122,7 @@ option 150 ip 172.16.50.1 @// IP address of the CME (Router Subinterface / Defau
 @Ito na ang bagong topic.
 conf t
 telephony-service
+auto assign 1 to 7                      //<--@auto registration for line set
 max-ephones 10
 max-dn 10
 ip source-address 172.16.50.1 port 2000 //<-@Bakit port 2000?
@@ -144,6 +145,7 @@ ephone-dn 7
 @verify line number not set
 show ephone
 show running-config | section telephony-service
+
 
 @ACL
 @ACL ay sa Router na natin ilalagay.
