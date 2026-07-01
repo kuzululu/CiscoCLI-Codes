@@ -6,6 +6,7 @@
 ✅ Telephony Service
 ✅ ACL
 ✅ Cisco IP Phone Registration
+switch to router use copper straight thru
 use 2811 Router for CME or Call Manager
 
 🟢 Router 2811
@@ -68,14 +69,14 @@ switchport voice vlan #
 spanning-tree portfast
 
 @for verification
-show running-config interface fa0/1
-show interfaces switchport fa0/1
+show running-config interface #
+show interfaces switchport #
 
 @Configure Trunk
 conf t
 interface gi0/1
 switchport mode trunk
-switchport trunk allowed vlan 200
+switchport trunk allowed vlan #
 
 ---------------------------------------
 
@@ -87,8 +88,8 @@ Router 2811 Configuration
 interface #
 no shutdown
 exit
-interface fa0/0.200
-encapsulation dot1Q 200
+interface fa0/0.200 (interface #.vlan#)
+encapsulation dot1Q 200(vlan#)
 ip address 172.16.50.1 255.255.255.192
 
 @exclude ip address
