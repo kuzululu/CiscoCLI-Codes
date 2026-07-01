@@ -54,3 +54,17 @@ show ip interface brief
 @STEP 4 - Enable Routing
 conf t
 ip routing
+
+@exclude ip address
+conf t
+ip dhcp excluded-address 172.16.50.1
+
+@create DHCP POOL
+conf t
+ip dhcp pool VLAn_name
+network 172.16.50.0 255.255.255.192
+default-router 172.16.50.1
+option 150 ip 172.16.50.1 //@! here is the SVI or default server of call manager
+
+@verify the dhcp
+show ip dhcp binding
