@@ -8,6 +8,19 @@
 ✅ ACL
 ✅ Cisco IP Phone Registration
 
+Cisco Command
+
+!@BASIC SECURITY
+line console 0
+password cisco
+login
+exit
+line vty 0 15
+password cisco
+login
+exit
+service password-encryption
+
 @STEP 1 - Create Voice VLAN
 conf t
 vlan #
