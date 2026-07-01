@@ -141,6 +141,10 @@ numer 100#
 ephone-dn 7
  number 1007
 
+@verify line number not set
+show ephone
+show running-config | section telephony-service
+
 @ACL
 @ACL ay sa Router na natin ilalagay.
 @Halimbawa:
