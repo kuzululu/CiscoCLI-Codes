@@ -83,6 +83,18 @@ switchport trunk allowed vlan #
 -------------------------------------------
 Router 2811 Configuration 
 
+Pagkatapos palitan ang cable
+@Sa Router:
+
+enable
+conf t
+interface #
+no shutdown
+exit
+
+@Verify:
+show ip interface brief
+
 @STEP 3 - Create the SVI
  conf t
 interface #
@@ -112,16 +124,18 @@ conf t
 telephony-service
 max-ephones 10
 max-dn 10
-ip source-address 172.16.50.1 port 2000
-auto assign 1 to 7
-create cnf-files
+ip source-address 172.16.50.1 port 2000 //<-@Bakit port 2000?
+auto assign int# to int#                Cisco ang nag-design nito.
+create cnf-files                        Sa Cisco Call Manager Express (SCCP o Skinny protocol), ang default 
+                                        signaling port ay:
+                                        TCP 2000 Kaya hindi natin ito iniimbento. Ito ay Cisco standard.
 
 ✅ Extensions
+@dagdag ng extensions depende sa bilang ng ip phones
+@format
 conf t
 ephone-dn 1
  number 1001
-@dagdag ng extensions depende sa bilang ng ip phones
-@format
 ephone-dn #
 numer 100#
 ephone-dn 7
