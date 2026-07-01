@@ -7,3 +7,37 @@
 ✅ ip routing
 ✅ ACL
 ✅ Cisco IP Phone Registration
+
+@STEP 1 - Create Voice VLAN
+conf t
+vlan #
+ name VLAn-Name
+
+@Verify
+do show vlan brief
+
+@STEP 2 - Assign Ports
+@Ito ang unang bagong command.
+@Lahat ng phones ay nasa Fa0/1 hanggang Fa0/7.
+
+conf t
+interface range #
+switchport voice vlan #
+spanning-tree portfast
+
+@for verification
+show running-config interface fa0/1
+show interfaces switchport fa0/1
+
+@STEP 3 - Create the SVI
+ conf t
+ interface vlan 200
+ ip address 172.16.50.1 255.255.255.192
+ no shutdown
+
+@Verify
+show ip interface brief
+
+@STEP 4 - Enable Routing
+conf t
+ip routing
