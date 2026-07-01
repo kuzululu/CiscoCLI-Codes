@@ -7,8 +7,38 @@
 ✅ ip routing
 ✅ ACL
 ✅ Cisco IP Phone Registration
+use 2811 Router for CME or Call Manager
+
+🟢 Router 2811
+
+Dito na ilalagay ang:
+
+✅ CME (telephony-service)
+✅ DHCP Server
+✅ Default Gateway (Subinterface o Physical Interface depende sa design)
+✅ Inter-VLAN Routing
+✅ Option 150
+
+🔵 3560 Switch
+
+Ang switch magiging:
+
+✅ Layer 2 Access Switch
+✅ VLAN Creation
+✅ Voice VLAN Assignment
+✅ Access Ports
+✅ Trunk Port papuntang Router
+
+Cisco 3560 Switch
+Ang switch ay Layer 2 na lang.
+
+Cisco 2811 Router
+Dito na lahat.
 
 Cisco Command
+
+--------------------------------------------
+Switch Configuration L2
 
 !@BASIC SECURITY
 line console 0
@@ -42,18 +72,25 @@ spanning-tree portfast
 show running-config interface fa0/1
 show interfaces switchport fa0/1
 
+@Configure Trunk
+conf t
+interface gi0/1
+switchport mode trunk
+switchport trunk allowed vlan 200
+
+---------------------------------------
+
+-------------------------------------------
+Router 2811 Configuration 
+
 @STEP 3 - Create the SVI
  conf t
- interface vlan 200
- ip address 172.16.50.1 255.255.255.192
- no shutdown
-
-@Verify
-show ip interface brief
-
-@STEP 4 - Enable Routing
-conf t
-ip routing
+interface #
+no shutdown
+exit
+interface fa0/0.200
+encapsulation dot1Q 200
+ip address 172.16.50.1 255.255.255.192
 
 @exclude ip address
 conf t
@@ -64,7 +101,36 @@ conf t
 ip dhcp pool VLAn_name
 network 172.16.50.0 255.255.255.192
 default-router 172.16.50.1
-option 150 ip 172.16.50.1 //@! here is the SVI or default server of call manager
+option 150 ip 172.16.50.1 @// IP address of the CME (Router Subinterface / Default Gateway)
 
-@verify the dhcp
-show ip dhcp binding
+@CME
+
+✅ CME
+
+@Ito na ang bagong topic.
+conf t
+telephony-service
+max-ephones 10
+max-dn 10
+ip source-address 172.16.50.1 port 2000
+auto assign 1 to 7
+create cnf-files
+
+✅ Extensions
+conf t
+ephone-dn 1
+ number 1001
+@dagdag ng extensions depende sa bilang ng ip phones
+@format
+ephone-dn #
+numer 100#
+ephone-dn 7
+ number 1007
+
+@ACL
+@ACL ay sa Router na natin ilalagay.
+@Halimbawa:
+@ip access-list extended VOICE_POLICY
+
+
+-------------------------------------------
