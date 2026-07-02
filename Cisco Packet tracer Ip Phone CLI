@@ -146,6 +146,7 @@ ephone-dn 7
 show ephone
 show running-config | section telephony-service
 
+@Voice Gateway and Auto Attendant (IVR).
 
 @ACL
 @ACL ay sa Router na natin ilalagay.
