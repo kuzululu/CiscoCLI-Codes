@@ -76,8 +76,7 @@ show interfaces switchport #
 conf t
 interface gi0/1
 switchport mode trunk
-switchport trunk allowed vlan #
-
+switchport trunk allowed vlan # @<--(Optional) Restricts the trunk to carry only the specified VLANs.
 ---------------------------------------
 
 -------------------------------------------
