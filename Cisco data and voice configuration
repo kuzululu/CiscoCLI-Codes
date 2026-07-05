@@ -1,1 +1,122 @@
+Roles
+                +------------------+
+                |   CME Router     |
+                |------------------|
+                | Telephony        |
+                | Option 150       |
+                | Phone Registration|
+                | ACL (optional)   |
+                +---------+--------+
+                          |
+                    Routed Link
+                          |
+                +---------+--------+
+                |   L3 Core Switch |
+                |------------------|
+                | SVI              |
+                | ip routing       |
+                | DHCP (Data)      |
+                | DHCP (Voice)     |
+                +----+----+----+---+
+                     |    |    |
+                 Trunks to Access Switches
+Tanong 1:
+
+Sa core switch pwede maging DHCP sa bawat device kahit IP Phones?
+
+Oo.
+
+Ang Layer 3 Switch (3560) ay puwedeng maging iisang DHCP Server para sa:
+
+VLAN 10
+VLAN 20
+VLAN 30
+VLAN 40
+VLAN 50
+VLAN 60
+VLAN 70
+VLAN 200 (Voice)
+
+Hindi problema kung PC o IP Phone ang kukuha ng IP address. Pareho lang silang DHCP clients.
+
+Ang pagkakaiba lang ng Voice VLAN ay may dagdag na impormasyon na kailangang matanggap ng phone.
+
+Tanong 2:
+
+Tapos ang CME Router ay para dito?
+
+Oo. Diyan papasok ang CME.
+
+Ang trabaho ng CME Router ay:
+
+✅ Cisco Unified CME (Call Manager Express)
+
+✅ Telephony Service
+
+✅ Cisco IP Phone Registration
+
+✅ TFTP Server (Option 150)
+
+✅ Dial Peers (kapag gusto mo nang tumawag)
+
+✅ Voice Features
+
+Sa madaling salita:
+
+L3 Switch = Network Engineer
+
+CME Router = Telephone System
+
+Tanong 3:
+
+Option 150?
+
+Ito ang mahalagang concept.
+
+Kapag nag-boot ang Cisco IP Phone:
+
+Humihingi ng IP address.
+Nakakatanggap ng:
+IP Address
+Subnet Mask
+Default Gateway
+Hahanapin niya ang Option 150.
+Makikita niya ang IP ng CME Router.
+Kokonekta siya roon para i-download ang phone configuration.
+
+Kaya ang flow ay parang ganito:
+
+IP Phone
+     │
+     ▼
+DHCP (L3 Switch)
+     │
+     ▼
+Option 150 = 172.16.x.x
+     │
+     ▼
+CME Router
+     │
+     ▼
+Phone Registration
+Tanong 4:
+
+O pwede ko ring gawing SVI si router?
+
+Puwede, pero hindi ko iyon irerekomenda para sa lab na ginagawa mo.
+
+Isipin mo ang dalawang setup:
+
+Setup A (Mas modern at mas malinis)
+L3 Switch
+---------
+SVI
+ip routing
+DHCP
+
+Router
+------
+Telephony
+
+Ito ang gusto kong ma-master mo.
 
