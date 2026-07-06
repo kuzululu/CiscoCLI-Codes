@@ -20,6 +20,22 @@ Roles
                 +----+----+----+---+
                      |    |    |
                  Trunks to Access Switches
+
+Ang magiging tamang pagkakasunod-sunod ng configuration
+1. Basic Security
+2. Create VLANs (10,20,30,40,50,60,70,200)
+3. Assign Data VLAN sa access ports
+4. Assign switchport voice vlan 200 sa mga port na may IP Phone
+5. Configure trunk links
+6. Gumawa ng lahat ng SVI sa L3 Core Switch
+7. Enable ip routing
+8. Configure DHCP pools para sa Data VLANs
+9. Configure DHCP pool para sa Voice VLAN (may option 150)
+10. Gumawa ng routed link sa pagitan ng L3 Core at CME Router
+11. Configure static routes (o routing protocol kung gusto mo sa susunod)
+12. Configure telephony-service at ephone-dn sa CME Router
+13. I-test kung nakakakuha ng IP ang PC at IP Phone, at kung nagre-register ang phone sa CME.
+
 Tanong 1:
 
 Sa core switch pwede maging DHCP sa bawat device kahit IP Phones?
@@ -119,4 +135,237 @@ Router
 Telephony
 
 Ito ang gusto kong ma-master mo.
+
+3560 Core
+
+VLAN
+SVI
+Inter-VLAN Routing
+DHCP Data
+DHCP Voice
+
+2811
+
+CME
+Telephony
+Option150 destination
+Phone Registration
+
+Hindi na Router-on-a-Stick.
+
+@STEP 1
+Configure ALL VLANs sa lahat ng Access Switch
+conf t
+
+vlan #
+name vlanName
+
+vlan #
+name VOICE-VLAnName
+
+@same lang sa ibang vlan
+
+@STEP 2
+Assign DATA VLAN
+
+Example VLAN10
+interface range fa0/1-5
+switchport mode access
+switchport access vlan 10
+
+@Pareho lang sa ibang VLAN.
+
+@STEP 3
+@Voice VLAN
+
+@Ito ang bagong command.
+
+@Halimbawa
+
+@IT Department
+Fa0/1 hanggang Fa0/5
+interface range fa0/1-5
+switchport voice vlan 200
+
+@Admin
+interface range fa0/7-9
+switchport voice vlan 200
+
+@Faculty
+interface range fa0/11-18
+switchport voice vlan 200
+
+@Ganun lang.
+
+@Mapapansin mo hindi mo inalis ang Data VLAN.
+
+@Example
+
+@switchport access vlan 10
+@switchport voice vlan 200
+
+@Magkasama sila.
+
+@STEP 4
+@Trunk
+
+@Lahat ng uplinks
+
+interface g0/1
+switchport mode trunk
+@switchport trunk allowed vlan 10,20,30,40,50,60,70,200
+
+@Gawin sa lahat ng trunk.
+
+@Core Switch
+
+@Dito na tayo.
+
+@Create SVI
+
+conf t
+interface vlan10
+ip address ....
+no shut
+
+interface vlan20
+ip address ....
+no shut
+
+interface vlan30
+...
+
+interface vlan40
+
+interface vlan50
+
+interface vlan60
+
+interface vlan70
+
+interface vlan200
+ip address ....
+no shut
+
+@Pagkatapos
+
+ip routing
+
+@Ito na ang magiging Gateway ng buong network.
+
+@STEP 6
+@DHCP DATA
+
+@Example
+ip dhcp excluded-address 172.16.10.1
+ip dhcp pool IT
+network 172.16.10.0 255.255.255.0
+default-router 172.16.10.1
+dns-server 8.8.8.8
+
+@Ganun din
+
+@ADMIN
+@FACULTY
+@REGISTRAR
+@PRINCIPAL
+@GUIDANCE
+@SERVER
+
+@STEP 7
+@DHCP VOICE
+
+@Ito ang bago.
+
+ip dhcp excluded-address 172.16.200.1
+
+ip dhcp pool VOICE
+network 172.16.200.0 255.255.255.0
+default-router 172.16.200.1
+option 150 ip 172.16.70.2
+
+@Mapapansin mo
+@option 150
+@Hindi Gateway ang nilagay.
+@Kundi
+@IP ng CME Router
+@Halimbawa
+
+@Core VLAN200
+@172.16.200.1
+
+@CME Router
+@172.16.70.2
+@Option150
+@172.16.70.2
+@Kasi doon magre-register ang phone.
+
+@STEP 8
+Routed Link papuntang Router
+@Core
+conf t
+interface g0/1
+no switchport
+@ip address 10.10.10.1 255.255.255.252
+
+@Router
+
+conf t
+interface fa0/0
+ip address 10.10.10.2 255.255.255.252
+no shutdown
+
+STEP 9
+Static Routes
+
+Core
+
+ip route 0.0.0.0 0.0.0.0 10.10.10.2
+@Router
+ip route 172.16.0.0 255.255.0.0 10.10.10.1
+
+STEP 10
+@CME Router
+telephony-service
+max-ephones 20
+max-dn 20
+ip source-address 172.16.70.2 port 2000
+auto assign 1 to 20
+create cnf-files
+
+@STEP 11
+@Extensions
+ephone-dn 1
+number 1001
+
+ephone-dn 2
+number 1002
+
+ephone-dn 3
+number 1003
+
+@...
+
+ephone-dn 20
+number 1020
+
+@STEP 12
+@Verify
+@Core
+
+show vlan brief
+show ip interface brief
+show ip route
+show ip dhcp binding
+show ip dhcp pool
+Access Switch
+show interfaces trunk
+show interfaces switchport
+
+@Router
+
+show ephone
+show ephone registered
+show telephony-service
+show running-config | section telephony-service
 
