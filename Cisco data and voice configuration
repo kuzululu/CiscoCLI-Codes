@@ -211,9 +211,15 @@ switchport voice vlan 200
 
 @Lahat ng uplinks
 
-interface g0/1
+
+!@trunking if many switch 
+!notest: if error occurred “Command rejected: An interface whose trunk encapsulation is "Auto" can not be configured to "trunk" mode” type this cli first “switchport trunk encapsulation dot1q” before “switchport mode trunk”
+
+int port# 
 switchport mode trunk
-@switchport trunk allowed vlan 10,20,30,40,50,60,70,200
+!@verify
+Sh cdp neigh !to show the trunking links
+sh int trunk
 
 @Gawin sa lahat ng trunk.
 
