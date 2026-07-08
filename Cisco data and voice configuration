@@ -279,6 +279,11 @@ dns-server 8.8.8.8
 @SERVER
 
 @STEP 7
+@Router
+interface fa0/0.200 (interface #.vlan#)
+encapsulation dot1Q 200(vlan#)
+ip address (ip add) (Custom Subnet MAsk)
+
 @DHCP VOICE
 
 @Ito ang bago.
