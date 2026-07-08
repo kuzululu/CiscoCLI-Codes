@@ -308,20 +308,30 @@ option 150 ip 172.16.70.2
 @Kasi doon magre-register ang phone.
 
 @STEP 8
+@for opening switchport if no switchport
+conf t
+interface g1/0/5
+switchport
+
 Routed Link papuntang Router
 @Core switch
-conf t
-interface g0/1
-no switchport
-@ip address 10.10.10.1 255.255.255.252
+interface g1/0/5
+switchport mode access
+switchport access vlan 200
+spanning-tree portfast
 
 @Router
-
-conf t
 interface fa0/0
-ip address 10.10.10.2 255.255.255.252
-no shutdown
+ ip address 172.16.100.2 255.255.255.224
+ no shutdown
 
+@Voice VLAN SVI CoreSwitch
+interface vlan200
+ ip address 172.16.100.1 255.255.255.224
+ no shutdown
+
+@========================================
+@not includede CLI
 STEP 9
 Static Routes
 
@@ -330,6 +340,7 @@ Core
 ip route 0.0.0.0 0.0.0.0 10.10.10.2
 @Router
 ip route 172.16.0.0 255.255.0.0 10.10.10.1
+@==============================
 
 STEP 10
 @CME Router
