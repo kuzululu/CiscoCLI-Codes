@@ -280,10 +280,6 @@ dns-server 8.8.8.8
 
 @STEP 7
 @Router
-interface fa0/0.200 (interface #.vlan#)
-encapsulation dot1Q 200(vlan#)
-ip address (ip add) (Custom Subnet MAsk)
-
 @DHCP VOICE
 
 @Ito ang bago.
@@ -313,7 +309,7 @@ option 150 ip 172.16.70.2
 
 @STEP 8
 Routed Link papuntang Router
-@Core
+@Core switch
 conf t
 interface g0/1
 no switchport
