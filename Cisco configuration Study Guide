@@ -1,0 +1,90 @@
+Ang susunod mong aralin (Priority)
+
+Kung ang goal mo ay matapos ang CCNA, eto na ang roadmap.
+
+Phase 1 (Halos tapos ka na)
+
+✔ VLAN
+✔ Trunking
+✔ VLSM
+✔ DHCP
+✔ SVI
+✔ Inter-VLAN Routing
+✔ Voice VLAN
+✔ CME
+✔ ACL
+
+Phase 2
+
+🔹 STP
+
+Root Bridge
+Secondary Root
+PortFast
+BPDU Guard
+Root Guard
+Loop Guard
+
+Ito na ang susunod na dapat mong kabisaduhin.
+
+Phase 3
+
+OSPF
+
+Single Area muna.
+
+router ospf 1
+network ...
+passive-interface
+default-information originate
+
+Kapag marunong ka na nito, halos lahat ng enterprise topology kaya mo na.
+
+Phase 4
+
+NAT
+
+Inside
+Outside
+PAT
+Static NAT
+Dynamic NAT
+
+Ito ang ginagamit para lumabas sa Internet.
+
+Phase 5
+
+HSRP
+
+Standby
+Priority
+Preempt
+Virtual IP
+
+Ito ang High Availability.
+
+Phase 6
+
+EtherChannel
+
+PAgP
+LACP
+Port-channel
+
+Napakalaking topic nito sa enterprise.
+
+Phase 7
+
+Security
+
+Port Security
+DHCP Snooping
+Dynamic ARP Inspection
+IP Source Guard
+Phase 8
+
+WAN
+
+PPP
+GRE
+VPN
