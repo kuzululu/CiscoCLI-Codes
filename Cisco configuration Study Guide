@@ -88,3 +88,23 @@ WAN
 PPP
 GRE
 VPN
+
+Base sa mga nakikita ko sa progress mo nitong mga nakaraang araw, ito ang roadmap na irerekomenda ko.
+
+Topic	Status
+VLSM	⭐⭐⭐⭐⭐
+VLAN	⭐⭐⭐⭐⭐
+Access/Voice VLAN	⭐⭐⭐⭐⭐
+Trunking	⭐⭐⭐⭐⭐
+SVI	⭐⭐⭐⭐⭐
+Inter-VLAN Routing	⭐⭐⭐⭐⭐
+DHCP	⭐⭐⭐⭐⭐
+ACL	⭐⭐⭐⭐☆
+CME / Telephony	⭐⭐⭐⭐☆
+Troubleshooting	⭐⭐⭐☆☆
+STP	⭐☆☆☆☆
+EtherChannel	☆☆☆☆☆
+OSPF	☆☆☆☆☆
+NAT/PAT	☆☆☆☆☆
+HSRP	☆☆☆☆☆
+IPv6	☆☆☆☆☆
