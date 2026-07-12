@@ -291,6 +291,40 @@ network 172.16.200.0 255.255.255.0
 default-router 172.16.200.1
 option 150 ip 172.16.70.2
 
+@SVI CoreSwitch
+!@EXTENDED ACL
+ ip  access-list extended Name-Policy
+deny ip SOURCE_NETWORK SOURCE_WILDCARD DEST_NETWORK DEST_WILDCARD
+permit ip any any
+
+!@APPLY ACL
+ int vlan #
+ ip access-group Name-Policy in
+
+!@Importante: Kung naka-apply pa ang ACL sa interface, magandang tanggalin muna:
+interface vlan #
+no ip access-group NAme-Policy in
+
+@Pagkatapos saka:
+no ip access-list extended HR-Policy
+
+!@remove acl policy
+conf t
+no ip access-list extended Name-policy
+
+!or remove specific entry
+conf t
+ip access-list extended HR-Policy
+no deny ip 172.16.100.32 0.0.0.15 172.16.100.0 0.0.0.15
+
+!@VERIFY ACL
+ sh access-lists
+ sh ip access-lists
+ sh running-config | inc access-group
+ show running-config
+show running-config interface vlan # !specific vlan
+show ip interface vlan # !makikita rito ang inbound(in)
+
 @Mapapansin mo
 @option 150
 @Hindi Gateway ang nilagay.
