@@ -267,7 +267,7 @@ ip routing
 ip dhcp excluded-address 172.16.10.1
 ip dhcp pool IT
 network 172.16.10.0 255.255.255.0
-default-router 172.16.10.1
+default-router 172.16.10.1 
 dns-server 8.8.8.8
 
 @Ganun din
@@ -290,7 +290,7 @@ ip dhcp excluded-address 172.16.200.1
 ip dhcp pool VOICE
 network 172.16.200.0 255.255.255.0
 default-router 172.16.200.1
-option 150 ip 172.16.70.2
+option 150 ip 172.16.70.2 @ip address of the CME-Router
 
 @SVI CoreSwitch
 !@EXTENDED ACL
