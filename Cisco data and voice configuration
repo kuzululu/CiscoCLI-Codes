@@ -382,7 +382,7 @@ STEP 10
 telephony-service
 max-ephones 20
 max-dn 20
-ip source-address 172.16.70.2 port 2000
+ip source-address 172.16.70.2 port 2000 @ip source is the CME-Router and port 2000 is the default by the cisco
 auto assign 1 to 20
 create cnf-files
 
