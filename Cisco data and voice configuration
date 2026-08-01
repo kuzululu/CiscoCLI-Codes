@@ -173,6 +173,7 @@ interface range fa0/1-5
 spanning-tree portfast
 switchport mode access
 switchport access vlan 10
+switchport voice vlan 200 !optional if you want the port can be data and voice vlan at the same time
 
 @Pareho lang sa ibang VLAN.
 
