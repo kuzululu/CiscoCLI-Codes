@@ -73,6 +73,8 @@ switchport mode trunk
 switchport trunk allowed vlan 10,20,30,40,50,60
 !optional command for add a trunk vlan allowed example add vlan 70
 switchport trunk allowed vlan add 70
+!optional command for remove a trunk vlan allowed exemple remove vlan 70
+switchport trunk allowed vlan remove 70
 =================================================
 VERIFY TRUNK
 show interfaces trunk
