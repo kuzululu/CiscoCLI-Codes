@@ -214,6 +214,8 @@ show startup-config
 show ip dhcp binding
 show ip dhcp pool
 show mac address-table
+sh spanning-tree vlan # if you want specific vlan ID
+sh spanning-tree if you want show all the details
 =================================================
 EMERGENCY COMMANDS
 show run
