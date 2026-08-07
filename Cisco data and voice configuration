@@ -324,6 +324,7 @@ no deny ip 172.16.100.32 0.0.0.15 172.16.100.0 0.0.0.15
  sh access-lists
  sh ip access-lists
  sh running-config | inc access-group
+ sh run | inc access
  show running-config
 show running-config interface vlan # !specific vlan
 show ip interface vlan # !makikita rito ang inbound(in)
