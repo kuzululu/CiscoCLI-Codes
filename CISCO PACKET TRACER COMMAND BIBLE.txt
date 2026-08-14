@@ -13,7 +13,18 @@ show running-config
 show startup-config
 
 
+=================================================
+!cisco switch set as client mode
+conf t
+vtp mode client
+end
 
+!cisco switch set as server mode
+conf t
+vtp mode server
+end
+
+=================================================
 
 
 =================================================
