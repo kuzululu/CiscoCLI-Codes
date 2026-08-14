@@ -1,0 +1,824 @@
+Cisco WLC-2504 — Dual SSID / Dual VLAN Complete Setup
+1. Target Topology
+                         L3-SVI-SW
+                    ┌──────┴──────┐
+                    │             │
+                 VLAN 10       VLAN 20
+                    │             │
+                    └──────┬──────┘
+                           │
+                      L2-SW01
+                    ┌──────┴──────┐
+                    │             │
+                 LAP-PTs       WLC-2504
+                    │             │
+                    └──────┬──────┘
+                           │
+                     Wireless Clients
+Port assignment natin
+L2-SW01
+Fa0/1 → LAP / VLAN 10
+Fa0/2 → LAP / VLAN 10
+Fa0/3 → LAP / VLAN 10
+Fa0/4 → LAP / VLAN 10
+Fa0/5 → WLC-2504 / TRUNK
+Gi0/1 → L3-SVI-SW / TRUNK
+2. VLAN PLAN
+VLAN 10 = IT / Management
+VLAN 20 = Operations / Guest
+
+Current addressing na ginamit natin:
+
+VLAN 10
+Network: 172.20.10.160/27
+Mask:    255.255.255.224
+Gateway: 172.20.10.161
+WLC:     172.20.10.162
+
+VLAN 10 usable range:
+
+172.20.10.161 – 172.20.10.190
+
+For VLAN 20, sa original lab mo:
+
+Network: 172.20.10.192/28
+Mask:    255.255.255.240
+Gateway: 172.20.10.193
+
+VLAN 20 usable:
+
+172.20.10.193 – 172.20.10.206
+3. L3-SVI-SW — VLAN CONFIGURATION
+enable
+configure terminal
+
+
+vlan 10
+ name IT_INFRA
+exit
+
+
+vlan 20
+ name OPERATIONS
+exit
+4. L3-SVI-SW — SVI CONFIGURATION
+VLAN 10
+interface vlan 10
+ description IT_INFRA_WLC_MANAGEMENT
+ ip address 172.20.10.161 255.255.255.224
+ no shutdown
+exit
+VLAN 20
+interface vlan 20
+ description OPERATIONS_WIFI
+ ip address 172.20.10.193 255.255.255.240
+ no shutdown
+exit
+
+Enable routing:
+
+ip routing
+5. DHCP — VLAN 10
+
+Exclude the gateway and WLC:
+
+ip dhcp excluded-address 172.20.10.161 172.20.10.162
+
+Create DHCP:
+
+ip dhcp pool IT_INFRA
+ network 172.20.10.160 255.255.255.224
+ default-router 172.20.10.161
+ dns-server 8.8.8.8
+exit
+Packet Tracer WLC discovery
+
+Sa Packet Tracer setup natin, ginamit natin:
+
+ip dhcp pool IT_INFRA
+ option 150 ip 172.20.10.162
+exit
+
+Important: Ito ay dahil sa Packet Tracer implementation na ginagamit natin. Sa actual Cisco WLC deployment, ang DHCP-based WLC discovery ay normally gumagamit ng Option 43, hindi Option 150.
+
+6. DHCP — VLAN 20
+ip dhcp excluded-address 172.20.10.193
+
+Then:
+
+ip dhcp pool OPERATIONS
+ network 172.20.10.192 255.255.255.240
+ default-router 172.20.10.193
+ dns-server 8.8.8.8
+exit
+7. VERIFY SVI
+show ip interface brief
+
+Expected:
+
+Vlan10    172.20.10.161    up    up
+Vlan20    172.20.10.193    up    up
+
+Then:
+
+show ip route
+
+Expected:
+
+C 172.20.10.160/27 is directly connected, Vlan10
+C 172.20.10.192/28 is directly connected, Vlan20
+8. L2-SW01 — CREATE VLANs
+enable
+configure terminal
+
+
+vlan 10
+ name IT_INFRA
+exit
+
+
+vlan 20
+ name OPERATIONS
+exit
+9. LAP PORTS — VLAN 10
+
+Ang APs natin ay:
+
+Fa0/1
+Fa0/2
+Fa0/3
+Fa0/4
+
+Configure:
+
+interface range fa0/1-4
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast
+exit
+
+Important: Hindi puwedeng:
+
+switchport access vlan 10
+switchport access vlan 20
+
+sa parehong access port.
+
+Ang access port ay isang access VLAN lang.
+
+10. WLC PORT — TRUNK
+
+Ang WLC ay nasa:
+
+Fa0/5
+
+Configure:
+
+interface fa0/5
+ switchport mode trunk
+ switchport trunk native vlan 10
+ switchport trunk allowed vlan 10,20
+ no shutdown
+exit
+Bakit native VLAN 10?
+
+Dahil ang WLC management ay:
+
+172.20.10.162
+VLAN 10
+11. L2 → L3 TRUNK
+
+Ang uplink natin:
+
+Gi0/1
+
+Configure:
+
+interface gigabitEthernet0/1
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20
+ no shutdown
+exit
+12. VERIFY TRUNKING
+show interfaces trunk
+
+Expected:
+
+Fa0/5     trunking
+Gi0/1     trunking
+
+At:
+
+Vlans allowed: 10,20
+Vlans active:  10,20
+STP forwarding: 10,20
+
+Ito mismo ang output na nakuha natin at tama siya.
+
+13. WLC-2504 MANAGEMENT IP
+
+Sa WLC-2504 initial setup:
+
+System Name:
+DualSSIDVLAN10-20
+
+Management:
+
+IP Address:
+172.20.10.162
+
+
+Subnet Mask:
+255.255.255.224
+
+
+Default Gateway:
+172.20.10.161
+
+
+Management VLAN ID:
+10
+14. ACCESS WLC WEB GUI
+
+Gamit ang PC na nasa VLAN 10:
+
+PC
+ ↓
+L2-SW01 Fa0/1
+ ↓
+VLAN 10
+ ↓
+L3-SVI
+ ↓
+WLC
+
+Sa PC:
+
+Desktop
+→ Web Browser
+
+Use:
+
+https://172.20.10.162
+
+HTTPS, hindi HTTP.
+
+15. INITIAL WLC ADMIN ACCOUNT
+
+Sa first login:
+
+Create Admin Account
+
+Create your own:
+
+Username: <your username>
+Password: <your password>
+
+Then:
+
+Start
+16. VERIFY WLC CONNECTIVITY
+
+From L3-SVI-SW:
+
+ping 172.20.10.162
+
+Expected:
+
+!!!!!
+Success rate is 100 percent
+
+Nakuha natin ito after correcting the WLC switch port.
+
+17. LAP-PT DHCP
+
+Ang LAP ports ay VLAN 10.
+
+Therefore ang LAPs ay kukuha ng DHCP:
+
+LAP-1 → 172.20.10.163+
+LAP-2 → 172.20.10.164+
+LAP-3 → 172.20.10.165+
+LAP-4 → 172.20.10.166+
+
+Ang WLC:
+
+172.20.10.162
+
+Important: Huwag maibigay ng DHCP ang .162.
+
+Kaya:
+
+ip dhcp excluded-address 172.20.10.161 172.20.10.162
+18. WLC ↔ LAP CAPWAP
+
+After DHCP, dapat makita sa LAP:
+
+CAPWAP Status: Connected
+
+At nakita natin ito successfully:
+
+CAPWAP Status:
+Connected to 172.20.10.162
+
+Meaning:
+
+LAP
+ ↓ CAPWAP
+WLC-2504
+
+working na.
+
+19. CREATE FIRST WLAN
+
+Sa WLC Web GUI:
+
+WLANs
+→ WLANs
+
+Create:
+
+WLAN ID:
+1
+
+Profile Name:
+
+CA_IT_INFRA
+
+SSID:
+
+CA_IT_INFRA
+
+Status:
+
+Enabled
+20. WLAN ID ≠ VLAN ID
+
+Ito ang importanteng concept.
+
+Kung nakita mo:
+
+WLAN ID: 1
+
+Hindi ibig sabihin VLAN 1.
+
+Ang ibig sabihin:
+
+WLAN ID = identifier ng WLAN
+
+Ang actual mapping natin:
+
+WLAN 1
+SSID CA_IT_INFRA
+VLAN 10
+21. SECURITY — IT SSID
+
+Sa:
+
+CA_IT_INFRA
+→ Security
+
+Use:
+
+WPA/WPA2
+
+Enable:
+
+WPA2
+PSK
+AES
+
+Password:
+
+<your WiFi password>
+
+Then:
+
+Apply
+22. CREATE SECOND WLAN
+
+Sa:
+
+WLANs
+→ Create New
+
+Create:
+
+WLAN ID:
+2
+
+Profile Name:
+
+CA_GUEST_WIFI
+
+SSID:
+
+CA_GUEST_WIFI
+
+Status:
+
+Enabled
+23. SECOND WLAN SECURITY
+
+Punta:
+
+CA_GUEST_WIFI
+→ Security
+
+Set:
+
+WPA/WPA2
+WPA2
+PSK
+AES
+
+Password:
+
+<your guest WiFi password>
+24. IMPORTANT — VLAN MAPPING
+
+Ito ang part na kailangan nating ayusin nang maayos.
+
+For:
+
+CA_IT_INFRA
+
+target:
+
+SSID
+ ↓
+WLC WLAN
+ ↓
+Management Interface
+ ↓
+VLAN 10
+
+For:
+
+CA_GUEST_WIFI
+
+target:
+
+SSID
+ ↓
+WLC WLAN
+ ↓
+Guest/Dynamic Interface
+ ↓
+VLAN 20
+25. CREATE DYNAMIC INTERFACE FOR VLAN 20
+
+Sa WLC:
+
+CONTROLLER
+→ Interfaces
+→ Create New
+
+Example:
+
+Interface Name:
+GUEST_VLAN20
+
+
+VLAN ID:
+20
+
+For our current addressing:
+
+IP Address:
+172.20.10.194
+
+
+Subnet Mask:
+255.255.255.240
+
+
+Default Gateway:
+172.20.10.193
+
+DHCP Server:
+
+172.20.10.193
+
+Then:
+
+Apply
+26. MAP GUEST SSID TO VLAN 20
+
+Punta:
+
+WLANs
+→ CA_GUEST_WIFI
+→ General
+
+Sa:
+
+Interface / Interface Group
+
+Palitan mula:
+
+management
+
+papunta sa:
+
+GUEST_VLAN20
+
+Then:
+
+Apply
+
+Target:
+
+CA_GUEST_WIFI
+      ↓
+GUEST_VLAN20
+      ↓
+VLAN 20
+27. FINAL WLAN DESIGN
+WLAN 1
+Profile: CA_IT_INFRA
+SSID:    CA_IT_INFRA
+VLAN:    10
+WLAN 2
+Profile: CA_GUEST_WIFI
+SSID:    CA_GUEST_WIFI
+VLAN:    20
+28. FINAL NETWORK FLOW
+IT SSID
+Wireless Client
+      ↓
+CA_IT_INFRA
+      ↓
+LAP-PT
+      ↓
+CAPWAP
+      ↓
+WLC-2504
+      ↓
+VLAN 10
+      ↓
+L3-SVI
+      ↓
+172.20.10.161
+      ↓
+DHCP
+
+Expected client:
+
+172.20.10.x/27
+Gateway: 172.20.10.161
+Guest SSID
+Wireless Client
+      ↓
+CA_GUEST_WIFI
+      ↓
+LAP-PT
+      ↓
+CAPWAP
+      ↓
+WLC-2504
+      ↓
+VLAN 20
+      ↓
+L3-SVI
+      ↓
+172.20.10.193
+      ↓
+DHCP
+
+Expected client:
+
+172.20.10.194–206
+Gateway: 172.20.10.193
+29. CLIENT CONNECTION
+
+For a wireless-capable Packet Tracer client:
+
+Laptop-PT
+→ Desktop
+→ PC Wireless
+→ Connect
+→ Refresh
+
+Expected:
+
+CA_IT_INFRA
+CA_GUEST_WIFI
+
+Connect to:
+
+CA_IT_INFRA
+
+Then DHCP.
+
+Expected:
+
+IP: 172.20.10.x
+Gateway: 172.20.10.161
+
+Connect to:
+
+CA_GUEST_WIFI
+
+Expected:
+
+IP: 172.20.10.194–206
+Gateway: 172.20.10.193
+30. PACKET TRACER WIRELESS ADAPTER ISSUE
+
+Sa testing natin, kahit:
+
+bagong Laptop-PT
+WPC300N
+power OFF/ON
+remove/reinsert adapter
+Wireless interface ON
+
+lumalabas pa rin:
+
+Adapter is Inactive
+
+Therefore, huwag nating i-assume na WLC/VLAN configuration ang dahilan nito. Maaari itong maging Packet Tracer client wireless simulation/version issue.
+
+Infrastructure natin ay na-verify na:
+
+VLAN              ✅
+SVI               ✅
+DHCP              ✅
+Trunk              ✅
+WLC Management     ✅
+WLC Ping           ✅
+CAPWAP             ✅
+LAP Registration   ✅
+WLAN Creation      ✅
+31. MOST IMPORTANT VERIFICATION
+L2-SW01
+show vlan brief
+show interfaces trunk
+L3-SVI-SW
+show ip interface brief
+show ip route
+show ip dhcp binding
+WLC
+
+Check:
+
+WLANs
+
+Expected:
+
+1 → CA_IT_INFRA
+2 → CA_GUEST_WIFI
+
+Check:
+
+Interfaces
+
+Expected:
+
+Management → VLAN 10
+GUEST_VLAN20 → VLAN 20
+
+Check:
+
+Access Points
+
+Expected:
+
+LAP-PT → Connected / Registered
+32. COMPLETE CONFIG CHEAT SHEET
+L3-SVI-SW
+enable
+configure terminal
+
+
+vlan 10
+ name IT_INFRA
+exit
+
+
+vlan 20
+ name OPERATIONS
+exit
+
+
+interface vlan 10
+ description WLC_MANAGEMENT
+ ip address 172.20.10.161 255.255.255.224
+ no shutdown
+exit
+
+
+interface vlan 20
+ description OPERATIONS_WIFI
+ ip address 172.20.10.193 255.255.255.240
+ no shutdown
+exit
+
+
+ip routing
+
+
+ip dhcp excluded-address 172.20.10.161 172.20.10.162
+ip dhcp pool IT_INFRA
+ network 172.20.10.160 255.255.255.224
+ default-router 172.20.10.161
+ dns-server 8.8.8.8
+ option 150 ip 172.20.10.162
+exit
+
+
+ip dhcp excluded-address 172.20.10.193
+ip dhcp pool OPERATIONS
+ network 172.20.10.192 255.255.255.240
+ default-router 172.20.10.193
+ dns-server 8.8.8.8
+exit
+
+
+end
+write memory
+L2-SW01
+enable
+configure terminal
+
+
+vlan 10
+ name IT_INFRA
+exit
+
+
+vlan 20
+ name OPERATIONS
+exit
+
+
+interface range fa0/1-4
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast
+exit
+
+
+interface fa0/5
+ switchport mode trunk
+ switchport trunk native vlan 10
+ switchport trunk allowed vlan 10,20
+ no shutdown
+exit
+
+
+interface gigabitEthernet0/1
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20
+ no shutdown
+exit
+
+
+end
+write memory
+33. FINAL TARGET
+                    WLC-2504
+                 172.20.10.162
+                       │
+                 TRUNK VLAN 10,20
+                       │
+                    L2-SW01
+                  /    │    \
+                 /     │     \
+             LAP-1   LAP-2   LAP-3
+                 \     │     /
+                  \    │    /
+                Wireless Clients
+                    /       \
+                   /         \
+          CA_IT_INFRA      CA_GUEST_WIFI
+             VLAN 10          VLAN 20
+                │                │
+         172.20.10.0/27    172.20.10.192/28
+                │                │
+         GW .161             GW .193
+Pinaka-importanteng sequence
+1. Create VLAN 10/20
+2. Create SVI 10/20
+3. Enable IP routing
+4. Create DHCP pools
+5. Configure L2 VLANs
+6. Configure LAP ports
+7. Configure WLC port as trunk
+8. Configure L2-L3 trunk
+9. Configure WLC management IP
+10. Access WLC via HTTPS
+11. Register LAPs via CAPWAP
+12. Create WLAN 1 → CA_IT_INFRA
+13. Map WLAN 1 → VLAN 10
+14. Create WLAN 2 → CA_GUEST_WIFI
+15. Create WLC dynamic interface → VLAN 20
+16. Map WLAN 2 → VLAN 20
+17. Configure WPA2-PSK
+18. Connect wireless client
+19. DHCP test
+20. Ping gateway
+21. Ping between VLANs / test ACL if required
+
+Ito na yung clean version na puwede mong i-copy-paste bilang reviewer. Ang pinakaimportanteng concept na nakuha mo sa buong exercise ay: SSID → WLAN → WLC interface → VLAN → SVI → DHCP.
