@@ -1,0 +1,22 @@
+configure terminal
+
+! Management VLAN / IP
+interface Vlan10
+ description management-wifi
+ ip address 192.168.2.3 255.255.255.0
+ no shutdown
+exit
+
+! Local administrator account
+username admin privilege 15 secret YOUR_PASSWORD
+
+! Enable HTTPS Web GUI
+ip http secure-server
+ip http authentication local
+
+! Optional: disable unsecured HTTP
+no ip http server
+
+end
+
+write memory
