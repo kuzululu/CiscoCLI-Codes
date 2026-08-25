@@ -11,3 +11,310 @@ interface TenGigabitEthernet1/0/2
 
 Important: no switchport ang nagpapalit sa physical port mula Layer-2 switchport papuntang Layer-3 routed port.
 
+Step 1 — Gawin nating WAN interface ang Te1/0/2
+
+Sa CoreSwitch:
+
+enable
+configure terminal
+
+interface TenGigabitEthernet1/0/2
+ description WAN_TO_ISP
+ no switchport
+ ip address 193.168.2.10 255.255.255.0
+ ip nat outside
+ no shutdown
+ exit
+
+Important: no switchport ang nagpapalit sa physical port mula Layer-2 switchport papuntang Layer-3 routed port.
+
+Ngayon ang:
+
+Te1/0/2
+193.168.2.10/24
+
+ay magiging WAN interface ng CoreSwitch.
+
+Step 2 — Gawin nating LAN gateway ang VLAN20
+
+Currently:
+
+Vlan20
+194.168.2.2/24
+
+Palitan natin iyon to:
+
+194.168.2.1
+
+Kasi mas logical na ang CoreSwitch ang .1 gateway ng LAN.
+
+interface Vlan20
+ description LAN_GATEWAY
+ ip address 194.168.2.1 255.255.255.0
+ ip nat inside
+ no shutdown
+ exit
+Step 3 — Ayusin ang DHCP ng LAN
+
+Currently ang DHCP mo ay:
+
+network 194.168.2.0
+default-router 194.168.2.1
+
+Actually tama na ito.
+
+Kaya hindi na natin kailangang baguhin ang LAN DHCP pool.
+
+Ang clients mo magiging:
+
+PC
+ |
+ | DHCP
+ v
+194.168.2.x
+ |
+Gateway = 194.168.2.1
+ |
+L3 CoreSwitch
+Step 4 — NAT/PAT
+
+Ngayon kailangan natin sabihin:
+
+"Lahat ng 194.168.2.0/24 traffic palabas ng WAN, i-NAT mo."
+
+Gamit tayo ng standard ACL:
+
+access-list 1 permit 194.168.2.0 0.0.0.255
+
+Then:
+
+ip nat inside source list 1 interface TenGigabitEthernet1/0/2 overload
+
+Ang overload ang importante dito. Pinapayagan nito ang maraming LAN clients na gumamit ng isang WAN address gamit ang PAT. Cisco documents this as the standard approach for multiple internal users sharing one outside address.
+
+Step 5 — Default Route
+
+Ito ang nagsasabi sa CoreSwitch:
+
+"Kapag hindi ko alam kung saan pupunta ang destination, ipadala ko sa ISP router."
+
+ip route 0.0.0.0 0.0.0.0 193.168.2.1
+
+So magiging:
+
+PC
+194.168.2.x
+     |
+     v
+CoreSwitch
+194.168.2.1
+     |
+     | NAT
+     v
+193.168.2.10
+     |
+     v
+193.168.2.1
+ISP ROUTER
+     |
+     v
+INTERNET
+Buong configuration
+
+Kung gusto mong copy-paste, ito ang pinakaimportanteng portion:
+
+enable
+configure terminal
+
+!
+! =========================
+! WAN INTERFACE
+! =========================
+interface TenGigabitEthernet1/0/2
+ description WAN_TO_ISP
+ no switchport
+ ip address 193.168.2.10 255.255.255.0
+ ip nat outside
+ no shutdown
+ exit
+
+!
+! =========================
+! LAN GATEWAY
+! =========================
+interface Vlan20
+ description LAN_GATEWAY
+ ip address 194.168.2.1 255.255.255.0
+ ip nat inside
+ no shutdown
+ exit
+
+!
+! =========================
+! NAT ACL
+! =========================
+access-list 1 permit 194.168.2.0 0.0.0.255
+
+!
+! =========================
+! NAT/PAT
+! =========================
+ip nat inside source list 1 interface TenGigabitEthernet1/0/2 overload
+
+!
+! =========================
+! DEFAULT ROUTE
+! =========================
+ip route 0.0.0.0 0.0.0.0 193.168.2.1
+
+end
+write memory
+Pero may isang bagay tayong kailangang tanggalin/ayusin
+
+Currently ginagamit mo ang VLAN10 bilang WAN:
+
+VLAN10 = 193.168.2.0/24
+
+at mayroon kang:
+
+Vlan10
+ip address 193.168.2.10
+
+At may DHCP pool ka rin na:
+
+Pool WAN
+193.168.2.0/24
+default-router 193.168.2.1
+
+Hindi ko irerekomendang gamitin ang DHCP pool na WAN sa final design natin kung ang WAN ay direct physical connection mula CoreSwitch papunta sa ISP router.
+
+Pwede nating alisin:
+
+no ip dhcp pool WAN
+
+At eventually alisin din natin ang VLAN10 kung wala na talaga itong purpose.
+
+Step 6 — Importanteng test
+
+Pagkatapos ng configuration:
+
+1. Check WAN
+show ip interface brief
+
+Dapat makita:
+
+Te1/0/2    193.168.2.10    YES    NVRAM    up    up
+Vlan20     194.168.2.1     YES    NVRAM    up    up
+2. Test ISP gateway
+
+Sa CoreSwitch:
+
+ping 193.168.2.1
+
+Dapat successful muna ito.
+
+Kung hindi successful, huwag muna nating isipin ang NAT.
+
+3. Test Internet mismo
+ping 8.8.8.8
+
+Kung successful:
+
+CoreSwitch → ISP → Internet
+
+working na ang routing.
+
+4. Check routing table
+show ip route
+
+Dapat mayroon kang:
+
+S* 0.0.0.0/0 [1/0] via 193.168.2.1
+
+Ang S* ay static default route.
+
+5. Test from PC
+
+PC should receive something like:
+
+IP Address      194.168.2.101
+Subnet Mask     255.255.255.0
+Default Gateway 194.168.2.1
+DNS             8.8.8.8
+
+Then:
+
+ping 194.168.2.1
+
+then:
+
+ping 193.168.2.1
+
+then:
+
+ping 8.8.8.8
+
+then:
+
+ping google.com
+Step 7 — Check NAT
+
+Ito ang pinakaimportanteng command:
+
+show ip nat translations
+
+Kapag nag-ping ka mula sa PC papuntang 8.8.8.8, dapat magkaroon ng entries.
+
+Pwede rin:
+
+show ip nat statistics
+
+Makikita mo kung may NAT translations at counters.
+
+Isang importanteng distinction
+
+May dalawang possible setup tayo:
+
+Setup A — CoreSwitch directly connected to ISP router
+Internet
+   |
+ISP Router
+   |
+Te1/0/2
+CoreSwitch
+   |
+L2 Switch
+   |
+Clients
+
+Ito ang recommended ko para sa lab mo.
+
+CoreSwitch ang:
+
+DHCP Server
+Default Gateway
+Inter-VLAN Router
+Internet Router
+NAT/PAT Router
+Setup B — May existing FortiGate/router between CoreSwitch and Internet
+Internet
+   |
+FortiGate/Router
+   |
+CoreSwitch
+   |
+L2 Switch
+   |
+Clients
+
+Sa ganitong setup, hindi kailangan ng NAT sa CoreSwitch dahil ang FortiGate/router ang dapat gumawa ng NAT. CoreSwitch simply needs a default route pointing to the FortiGate.
+
+Sa config mo ngayon
+
+Dahil mayroon kang 193.168.2.1 bilang WAN gateway at 194.168.2.1 bilang LAN gateway, mukhang nagse-set up ka ng simulated ISP/WAN network. Kaya puwede nating ituloy exactly along this design.
+
+Ang next step ko sa'yo ay huwag muna nating galawin ang L2 switch. I-configure muna natin ang CoreSwitch WAN + NAT + default route, tapos i-test natin bawat hop:
+
+Core → ISP → Internet → NAT → PC.
+
+Kung gusto mo, pwede kitang bigyan ng isang final clean configuration ng buong CoreSwitch + L2 Switch, kasama ang tamang VLAN10/WAN at VLAN20/LAN design, para copy-paste na lang at walang conflict sa existing config mo.
