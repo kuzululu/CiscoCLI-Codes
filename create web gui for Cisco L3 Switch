@@ -20,6 +20,8 @@ ip default-gateway 10.0.10.1
 end
 write memory
 
+username admin privilege 15 secret Cisco123!
+
 STEP 2
 
 SWITCH WEB ACCESS
