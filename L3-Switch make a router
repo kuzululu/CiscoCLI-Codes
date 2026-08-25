@@ -1,0 +1,13 @@
+enable
+configure terminal
+
+interface TenGigabitEthernet1/0/2
+ description WAN_TO_ISP
+ no switchport
+ ip address 193.168.2.10 255.255.255.0
+ ip nat outside
+ no shutdown
+ exit
+
+Important: no switchport ang nagpapalit sa physical port mula Layer-2 switchport papuntang Layer-3 routed port.
+
