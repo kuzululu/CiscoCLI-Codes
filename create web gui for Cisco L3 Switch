@@ -1,47 +1,68 @@
-configure terminal
+STEP 1
 
-! Management VLAN / IP
-interface Vlan10
- description management-wifi
- ip address 192.168.2.3 255.255.255.0
+SWITCH IP ADDRESS ASSIGNEMENT
+
+	change hostname
+	
+hostname SwitchNameHere
+
+
+! Assign a Management IP so you can SSH into the Core Switch
+ interface vlan 10
+ description Core_Management
+ ip address 10.0.10.2 255.255.255.0
  no shutdown
-exit
+ exit
 
-! Local administrator account
-username admin privilege 15 secret YOUR_PASSWORD
-
-! Enable HTTPS Web GUI
-ip http secure-server
-ip http authentication local
-
-! Optional: disable unsecured HTTP
-no ip http server
+! 6. Set the Default Gateway to the UDM Pro
+ip default-gateway 10.0.10.1
 
 end
-
-!enable ssh
-
-configure terminal
-
-! Management VLAN / IP
-interface Vlan10
- description management-wifi
- ip address 192.168.2.3 255.255.255.0
- no shutdown
-exit
-
-! Local administrator account
-username admin privilege 15 secret YOUR_PASSWORD
-
-! Enable HTTPS Web GUI
-ip http secure-server
-ip http authentication local
-
-! Optional: disable unsecured HTTP
-no ip http server
-
-end
-
 write memory
 
+STEP 2
+
+SWITCH WEB ACCESS
+
+	check status
+
+show running-config | include ip http
+show running-config | include username
+show ip interface brief
+
+	configuration
+
+conf t
+ip http server
+ip http secure-server
+ip http authentication local
+username admin privilege 15 secret StrongPassword123
+end
+write memory
+
+
+STEP 3
+
+	SSH 
+
+conf t
+!
+! 1. Set a hostname and domain name (required for RSA key generation)
+hostname Switch3850
+ip domain-name xandcomm.local(example only)
+!
+! 2. Generate RSA keys (minimum 2048 recommended)
+crypto key generate rsa modulus 2048
+!
+! 3. Create a local admin user
+username admin privilege 15 secret StrongPassword123
+!
+! 4. Enable SSH and restrict VTY lines to SSH only
+ip ssh version 2
+line vty 0 4
+ transport input ssh
+ login local
+exit
+!
+end
 write memory
