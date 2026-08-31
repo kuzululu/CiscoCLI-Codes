@@ -1,0 +1,36 @@
+Ang objective natin:
+
+Router = DHCP Server + Inter-VLAN Routing
+Core Switch = Layer 2 aggregation/trunking only
+Access Switches = VLAN + port assignment + trunking
+
+So essentially, aalisin natin ang SVI/gateway function sa CoreSwitch at ililipat sa Router-on-a-Stick.
+
+                 ┌───────────────────┐
+                 │       ROUTER      │
+                 │                   │
+                 │ DHCP SERVER       │
+                 │ Inter-VLAN Routing│
+                 │                   │
+                 │ G0/0              │
+                 └─────────┬─────────┘
+                           │
+                        TRUNK
+                           │
+                 ┌─────────┴─────────┐
+                 │    CORE SWITCH    │
+                 │                   │
+                 │ L2 ONLY           │
+                 │ NO SVI GATEWAYS   │
+                 │ TRUNKING ONLY     │
+                 └─────┬─────┬───────┘
+                       │     │
+                    TRUNK   TRUNK
+                       │     │
+                 ┌─────┘     └─────┐
+                 │                 │
+          ACCESS SWITCH 1     ACCESS SWITCH 2
+          VLANs/Ports         VLANs/Ports
+
+At yung telephony router mo puwede pa ring manatili sa topology. Hindi natin kailangang galawin muna iyon.
+
