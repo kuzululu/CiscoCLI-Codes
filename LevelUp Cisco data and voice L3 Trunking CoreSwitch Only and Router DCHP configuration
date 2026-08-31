@@ -34,3 +34,26 @@ So essentially, aalisin natin ang SVI/gateway function sa CoreSwitch at ililipat
 
 At yung telephony router mo puwede pa ring manatili sa topology. Hindi natin kailangang galawin muna iyon.
 
+Habang ginagawa mo, ito lang ang mental checklist mo:
+
+Sino ang gateway ng bawat VLAN?
+Dati: CoreSwitch SVI
+Ngayon: Router subinterface
+Sino ang DHCP server?
+Dati: CoreSwitch
+Ngayon: 2811 Router
+Ano ang role ng CoreSwitch?
+L2 switching
+VLANs
+Trunking
+Hindi na siya ang nag-i-inter-VLAN routing
+Paano makakarating ang multiple VLANs sa isang router interface?
+Router-on-a-Stick
+802.1Q
+Subinterfaces
+Ano ang mananatiling pareho?
+VLAN IDs
+Access-port assignments
+Access-switch configuration
+Trunk concept
+
