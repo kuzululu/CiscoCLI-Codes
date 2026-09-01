@@ -133,6 +133,11 @@ show ip interface brief
 
 !!Then subinterfaces:
 
+show ip dhcp pool
+show ip dhcp binding
+show ip dhcp conflict
+show ip interface brief
+
 interface fa0/0.40
  encapsulation dot1Q 40
  ip address 192.168.40.1 255.255.255.0
