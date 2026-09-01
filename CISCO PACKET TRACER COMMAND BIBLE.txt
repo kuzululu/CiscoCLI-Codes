@@ -179,6 +179,12 @@ interface gi0/1
  switchport trunk native vlan 100
 exit
 
+!!Best practice at para malinaw ang configuration, isama ang native VLAN sa allowed list 
+kung talagang gagamitin mo ito sa trunk. So gawin mo:
+
+switchport trunk native vlan 100
+switchport trunk allowed vlan 10-70,99,100
+=================================
 TROUBLESHOOTING COMMANDS
 show vlan brief
 show interfaces trunk
