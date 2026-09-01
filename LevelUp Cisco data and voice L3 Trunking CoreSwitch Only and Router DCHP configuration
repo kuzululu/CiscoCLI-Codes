@@ -70,3 +70,62 @@ interface gi0/1
  switchport mode trunk
  switchport trunk native vlan 100
 exit
+
+!!router configurations for DHCP and SVI
+interface fa0/0.40 !!<- meaning port#.vlanID
+ encapsulation dot1Q 40
+ ip address 192.168.40.1 255.255.255.0 !!<-- default gateway of VLAN ID
+
+!!4. At dito papasok ang DHCP
+Sa router:
+ip dhcp excluded-address 192.168.40.1 192.168.40.10
+!!Then:
+ip dhcp pool SALES
+ network 192.168.40.0 255.255.255.0
+ default-router 192.168.40.1
+ dns-server 8.8.8.8
+
+!5. Pero may isang critical detail: Native VLAN 100
+!Since ginawa natin:
+
+switchport trunk native vlan 100
+
+!!ang router side ay kailangan ding magkaroon ng native VLAN subinterface kung gusto nating explicitly handle ang VLAN 100.
+!For example:
+
+!!interface fa0/0.100
+!! encapsulation dot1Q 100 native
+
+!!Pero hindi natin kailangang lagyan ng IP kung dedicated/unused native VLAN lang siya.
+
+!!So:
+
+interface fa0/0.100
+ encapsulation dot1Q 100 native
+
+!Then:
+!Switch                         Router
+!Native VLAN 100  <----------> Fa0/0.100
+!VLAN 40          <----------> Fa0/0.40
+!VLAN 50          <----------> Fa0/0.50
+!VLAN 60          <----------> Fa0/0.60
+
+!!6. Very important: hindi switchport trunk ang router
+!!Ito ang common mistake kapag unang beses nag-ROAS.
+!!Switch:
+
+interface gi1/0/24
+ switchport mode trunk
+ switchport trunk native vlan 100
+ switchport trunk allowed vlan 10-70,99-100
+
+!!Router:
+
+interface fa0/0
+ no shutdown
+
+!!Then subinterfaces:
+
+interface fa0/0.40
+ encapsulation dot1Q 40
+ ip address 192.168.40.1 255.255.255.0
