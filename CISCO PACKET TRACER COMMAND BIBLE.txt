@@ -165,6 +165,20 @@ show mac address-table
 =================================================
 
 
+!assign a designated native vlan for trunking
+1. Create muna ang VLAN 100
+conf t
+vlan 100
+ name NATIVE_VLAN
+exit
+
+2. Sa trunk port
+Halimbawa Gi0/1 ang trunk:
+interface gi0/1
+ switchport mode trunk
+ switchport trunk native vlan 100
+exit
+
 TROUBLESHOOTING COMMANDS
 show vlan brief
 show interfaces trunk
