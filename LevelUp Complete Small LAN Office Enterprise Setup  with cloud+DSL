@@ -1,0 +1,92 @@
+Basic Small Company Topology
+                    ┌─────────────────┐
+                    │    Cloud-PT     │
+                    │    Internet     │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  DSL-Modem-PT   │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │   Router 2811   │
+                    │       R1        │
+                    └────────┬────────┘
+                             │
+                        802.1Q Trunk
+                             │
+                    ┌────────▼────────┐
+                    │ Core Switch     │
+                    │  3560-24PS      │
+                    │     CORE-SW     │
+                    └───────┬─────────┘
+                            │
+             ┌──────────────┼──────────────┐
+             │              │              │
+        802.1Q Trunk   802.1Q Trunk   802.1Q Trunk
+             │              │              │
+       ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐
+       │ Access SW1│  │ Access SW2│  │ Access SW3│
+       │  2960-24TT│  │  2960-24TT│  │  2960-24TT│
+       └─────┬─────┘  └─────┬─────┘  └─────┬─────┘
+             │              │              │
+        ┌────┼────┐     ┌───┼────┐     ┌───┼────┐
+        │    │    │     │   │    │     │   │    │
+       PC   PC   Phone  PC  PC  Phone  PC  PC  Phone
+Devices
+Cloud-PT             x1
+DSL-Modem-PT         x1
+Router 2811          x1
+Core Switch 3560-24PS x1
+Access Switch 2960-24TT x3
+PC-PT                x6
+IP Phone 7960        x3
+Initial VLAN Plan
+VLAN 10  → MANAGEMENT
+VLAN 20  → FINANCE
+VLAN 30  → HR
+VLAN 60  → GUEST
+VLAN 70  → VOICE
+VLAN 99  → NATIVE
+Physical/Logical Flow
+Internet
+   ↓
+Cloud-PT
+   ↓
+DSL-Modem-PT
+   ↓
+Router 2811
+   ↓
+802.1Q Trunk
+   ↓
+Core Switch 3560
+   ↓
+802.1Q Trunks
+   ↓
+Access Switches 2960
+   ↓
+PCs / IP Phones
+Learning progression
+01. VLAN Creation
+        ↓
+02. Access Port Assignment
+        ↓
+03. Trunking
+        ↓
+04. Native VLAN
+        ↓
+05. Voice VLAN
+        ↓
+06. Router DHCP
+        ↓
+07. Router as Default Gateway
+        ↓
+08. Inter-VLAN Routing
+        ↓
+09. DSL + Cloud WAN
+        ↓
+10. NAT
+        ↓
+11. OSPF
+        ↓
+12. ACL
