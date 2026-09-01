@@ -93,8 +93,8 @@ switchport trunk native vlan 100
 !!ang router side ay kailangan ding magkaroon ng native VLAN subinterface kung gusto nating explicitly handle ang VLAN 100.
 !For example:
 
-!!interface fa0/0.100
-!! encapsulation dot1Q 100 native
+interface fa0/0.100
+encapsulation dot1Q 100 native
 
 !!Pero hindi natin kailangang lagyan ng IP kung dedicated/unused native VLAN lang siya.
 
