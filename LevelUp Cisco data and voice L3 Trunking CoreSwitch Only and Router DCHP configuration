@@ -96,6 +96,10 @@ switchport trunk native vlan 100
 interface fa0/0.100
 encapsulation dot1Q 100 native
 
+!optional if native vlan by defaul which 1 no need this configuration
+interface fa0/0.100
+encapsulation dot1Q 100 native
+
 !!Pero hindi natin kailangang lagyan ng IP kung dedicated/unused native VLAN lang siya.
 
 !!So:
