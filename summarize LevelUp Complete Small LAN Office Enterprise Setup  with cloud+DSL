@@ -276,7 +276,8 @@ and:
 
 show ip nat statistics
 
-Important: If show ip nat translations shows nothing, that does not automatically mean NAT is broken. A translation appears when traffic actually matches the NAT rule and creates a translatable flow.
+Important: If show ip nat translations shows nothing, that does not automatically mean NAT is
+broken. A translation appears when traffic actually matches the NAT rule and creates a translatable flow.
 
 10. Verification Commands
 
