@@ -1,0 +1,412 @@
+Enterprise Network Setup — DHCP Router + ISP Router + NAT/PAT
+🏗️ Network Topology
+                    ┌─────────────┐
+                    │ DSL Modem   │
+                    └──────┬──────┘
+                           │
+                    ┌──────▼──────┐
+                    │ ISP Router  │
+                    │             │
+                    │ Fa0/0       │
+                    │ 10.0.0.1/30 │
+                    │             │
+                    │ Fa0/1       │
+                    │ 10.0.0.5/30│
+                    └──────┬──────┘
+                           │
+                     10.0.0.4/30
+                           │
+                    10.0.0.6/30
+                    ┌──────▼──────┐
+                    │ DHCP Router │
+                    │             │
+                    │ Fa0/1       │
+                    │ 10.0.0.6/30 │
+                    │             │
+                    │ Fa0/0       │
+                    │ Router-on-  │
+                    │ a-Stick     │
+                    └──────┬──────┘
+                           │
+                         TRUNK
+                           │
+                    ┌──────▼──────┐
+                    │  L2 Core    │
+                    │   Switch    │
+                    └──────┬──────┘
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+           VLAN 10      VLAN 20      VLAN 30
+         Management      Finance         HR
+        192.168.10.0   192.168.12.0  192.168.11.0
+             │             │            │
+             └─────────────┼────────────┘
+                           │
+                        VLAN 70
+                          Voice
+                      192.168.70.0
+1. VLANs and IP Addressing
+VLAN	Purpose	Network	Gateway
+10	Management	192.168.10.0/24	192.168.10.254
+20	Finance	192.168.12.0/24	192.168.12.254
+30	HR	192.168.11.0/24	192.168.11.254
+70	Voice	192.168.70.0/24	192.168.70.254
+
+WAN:
+
+ISP Router Fa0/1 = 10.0.0.5/30
+DHCP Router Fa0/1 = 10.0.0.6/30
+
+ISP/DSL side:
+
+ISP Router Fa0/0 = 10.0.0.1/30
+2. DHCP Router — Router-on-a-Stick
+
+The DHCP Router acts as:
+
+DHCP Server
+Default Gateway
+Inter-VLAN Router
+NAT/PAT Router
+VLAN 10
+interface fa0/0.10
+ description VLAN10_MANAGEMENT
+ encapsulation dot1Q 10
+ ip address 192.168.10.254 255.255.255.0
+ ip nat inside
+VLAN 20
+interface fa0/0.20
+ description VLAN20_FINANCE
+ encapsulation dot1Q 20
+ ip address 192.168.12.254 255.255.255.0
+ ip nat inside
+VLAN 30
+interface fa0/0.30
+ description VLAN30_HR
+ encapsulation dot1Q 30
+ ip address 192.168.11.254 255.255.255.0
+ ip nat inside
+VLAN 70
+interface fa0/0.70
+ description VLAN70_VOICE
+ encapsulation dot1Q 70
+ ip address 192.168.70.254 255.255.255.0
+ ip nat inside
+WAN Interface
+interface fa0/1
+ description WAN_TO_ISP_ROUTER
+ ip address 10.0.0.6 255.255.255.252
+ ip nat outside
+ no shutdown
+3. DHCP Configuration
+
+Each VLAN receives its IP configuration from the DHCP Router.
+
+Example:
+
+ip dhcp excluded-address 192.168.10.1 192.168.10.10
+ip dhcp excluded-address 192.168.12.1 192.168.12.10
+ip dhcp excluded-address 192.168.11.1 192.168.11.10
+ip dhcp excluded-address 192.168.70.1 192.168.70.10
+
+Example DHCP pool:
+
+ip dhcp pool VLAN10
+ network 192.168.10.0 255.255.255.0
+ default-router 192.168.10.254
+
+Same concept for the other VLANs:
+
+VLAN 20 → 192.168.12.0/24 → gateway 192.168.12.254
+VLAN 30 → 192.168.11.0/24 → gateway 192.168.11.254
+VLAN 70 → 192.168.70.0/24 → gateway 192.168.70.254
+4. Static Routing — DHCP Router
+
+The DHCP Router needs a default route toward the ISP Router.
+
+ip route 0.0.0.0 0.0.0.0 10.0.0.5
+
+Meaning:
+
+Anything I don't know → send to ISP Router 10.0.0.5
+
+Verification:
+
+show ip route
+
+Expected:
+
+S* 0.0.0.0/0 [1/0] via 10.0.0.5
+5. Static Routes — ISP Router
+
+The ISP Router needs to know where the internal VLAN networks are.
+
+ip route 192.168.10.0 255.255.255.0 10.0.0.6
+ip route 192.168.11.0 255.255.255.0 10.0.0.6
+ip route 192.168.12.0 255.255.255.0 10.0.0.6
+ip route 192.168.70.0 255.255.255.0 10.0.0.6
+
+Concept:
+
+ISP Router
+     │
+     │ "For VLAN networks,
+     │  send traffic to 10.0.0.6"
+     ▼
+DHCP Router
+
+Verification:
+
+show ip route
+
+Expected:
+
+S 192.168.10.0/24 via 10.0.0.6
+S 192.168.11.0/24 via 10.0.0.6
+S 192.168.12.0/24 via 10.0.0.6
+S 192.168.70.0/24 via 10.0.0.6
+6. NAT Inside / Outside
+
+This is an important concept.
+
+Internal VLAN interfaces
+Fa0/0.10 → ip nat inside
+Fa0/0.20 → ip nat inside
+Fa0/0.30 → ip nat inside
+Fa0/0.70 → ip nat inside
+
+These are the inside networks.
+
+WAN interface
+Fa0/1 → ip nat outside
+
+This is the outside/WAN side.
+
+Verify:
+
+show ip nat statistics
+
+Expected concept:
+
+Outside Interfaces:
+FastEthernet0/1
+
+Inside Interfaces:
+FastEthernet0/0
+FastEthernet0/0.10
+FastEthernet0/0.20
+FastEthernet0/0.30
+FastEthernet0/0.70
+7. NAT ACL
+
+We created ACL 1 to identify the internal networks that are allowed to be translated.
+
+access-list 1 permit 192.168.10.0 0.0.0.255
+access-list 1 permit 192.168.11.0 0.0.0.255
+access-list 1 permit 192.168.12.0 0.0.0.255
+access-list 1 permit 192.168.70.0 0.0.0.255
+
+The wildcard mask /24 equivalent is:
+
+0.0.0.255
+8. PAT — Port Address Translation
+
+Then we configured PAT:
+
+ip nat inside source list 1 interface fa0/1 overload
+
+Meaning:
+
+VLAN 10 ─┐
+VLAN 20 ─┤
+VLAN 30 ─┼──> PAT ──> 10.0.0.6
+VLAN 70 ─┘
+
+Multiple internal devices can share the outside interface address using different TCP/UDP port numbers.
+
+overload = PAT
+
+9. Testing
+Test 1 — VLAN Gateway
+
+From a PC:
+
+ping 192.168.12.254
+
+Expected:
+
+Reply
+Test 2 — WAN/ISP Router
+
+From PC6 in VLAN 20:
+
+ping 10.0.0.5
+
+Successful result:
+
+!!!!!
+Success rate is 100 percent
+
+This confirms that traffic successfully traveled:
+
+PC6
+ ↓
+VLAN 20
+ ↓
+192.168.12.254
+ ↓
+DHCP Router
+ ↓
+10.0.0.6
+ ↓
+ISP Router
+ ↓
+10.0.0.5
+Test 3 — NAT/PAT Translation
+
+After generating traffic:
+
+show ip nat translations
+
+and:
+
+show ip nat statistics
+
+Important: If show ip nat translations shows nothing, that does not automatically mean NAT is broken. A translation appears when traffic actually matches the NAT rule and creates a translatable flow.
+
+10. Verification Commands
+
+Useful commands for troubleshooting:
+
+show ip interface brief
+
+Check interface status and IP addresses.
+
+show ip route
+
+Check routing table.
+
+show ip dhcp binding
+
+Check DHCP-assigned addresses.
+
+show ip dhcp pool
+
+Check DHCP pools.
+
+show ip nat translations
+
+Check active NAT/PAT translations.
+
+show ip nat statistics
+
+Check NAT inside/outside interfaces and statistics.
+
+ping 10.0.0.5
+
+Test DHCP Router → ISP Router connectivity.
+
+🧠 What I Learned From This Lab
+
+The main things practiced in this setup were:
+
+1. Router-on-a-Stick
+
+One physical router interface can handle multiple VLANs using subinterfaces.
+
+Fa0/0
+ ├── Fa0/0.10 → VLAN 10
+ ├── Fa0/0.20 → VLAN 20
+ ├── Fa0/0.30 → VLAN 30
+ └── Fa0/0.70 → VLAN 70
+2. DHCP on a Router
+
+The router can dynamically assign:
+
+IP Address
+Subnet Mask
+Default Gateway
+
+to clients in different VLANs.
+
+3. Static Routing
+
+The DHCP Router uses:
+
+0.0.0.0/0 → 10.0.0.5
+
+while the ISP Router uses:
+
+192.168.x.0/24 → 10.0.0.6
+4. NAT
+
+Internal private addresses are translated when going toward the WAN.
+
+192.168.x.x
+     ↓
+   NAT
+     ↓
+10.0.0.6
+5. PAT
+
+Multiple clients can share one outside address:
+
+PC1 ─┐
+PC2 ─┤
+PC3 ─┼──> PAT ──> 10.0.0.6
+PC4 ─┘
+6. End-to-End Routing
+
+Successfully tested:
+
+PC6
+ ↓
+VLAN 20
+ ↓
+DHCP Router
+ ↓
+PAT/NAT
+ ↓
+10.0.0.6
+ ↓
+ISP Router
+ ↓
+10.0.0.5
+✅ Current Lab Status
+
+COMPLETED:
+
+ VLAN configuration
+ Access ports
+ Trunking
+ Voice VLAN
+ Router-on-a-Stick
+ DHCP Server on Router
+ Inter-VLAN routing
+ WAN addressing
+ DHCP Router → ISP Router connectivity
+ Static routing
+ NAT inside/outside
+ PAT configuration
+ PC → ISP Router connectivity
+
+NEXT LEVEL:
+
+LAN
+ ↓
+DHCP Router
+ ↓
+ISP Router
+ ↓
+DSL Modem
+ ↓
+Cloud
+ ↓
+Internet Router
+ ↓
+Internet Server
+
+That next portion is where we can practice real routed WAN/Internet simulation, including the return path from an external network back to the LAN.
+
+In short: oo, tama ang pagkaintindi mo. Sa lab na ito, natutunan mo na ang DHCP Router side, ang ISP Router side, paano magbigay ng route sa bawat VLAN papunta sa 10.0.0.6, default route papunta sa 10.0.0.5, at paano i-declare ang NAT inside/outside at PAT. Magandang stopping point na ito bago tayo lumipat sa mas malaking WAN/Internet topology.su
