@@ -107,3 +107,90 @@ DSL to Router(use Straight Thru)
 Ports to Link
 DHCP Router to DSL (port Fa0/1 to Port 0)
 DSL Modem to Cloud PT (port 1 to Modem 4 or 5)
+
+
+1. setup first VLANS, port Assigning, trunking with NAtive trunk 100
+2. Router DHCP, CME for Telephony Services
+3. very important note always use no shut just to make sure and spanning-tree portfast
+
+1. VLANS in All Switches
+conf t
+vlan 10
+name MANAGEMENT
+vlan 20
+name FINANCE
+vlan 30
+name HR
+vlan 70
+name VOICE
+vlan 100
+name Native-Trunking
+
+2. port assigning for designated VLANS
+conf t
+int port# / range port#
+swithcport mode access
+switchport access vlan #
+
+!! phone assigning
+switchport voice vlan #
+
+3. Trunking all switches with designated vlans
+conf t
+int port#
+switchport mode trunk !if error in encapsulation use the 2nd line
+switchport trunk encapsulation dot1q
+!repeat the line 1
+switchport trunk native vlan # !! if not use the default native vlan
+!!import note: if no using the native vlan no need to use command native vlan #
+switchport trunk allowed vlan # !!(use vlan# - vlan #) for shortcut ranges
+
+4. Create a SVI and DHCP using the router
+!!in Router DHCP
+conf t
+int port#.vlandId#
+encapsulation dot1q vlanId#
+ip address x.x.x.x subnetmask
+exit
+ip dhcp excluded-address x.x.x.x x.x.x.x !!optional
+ip dhcp pool Name
+network x.x.x.x subnetmask
+default-router SVI IP
+dns-server 8.8.8.8
+domain-name NAME
+
+!for DHCP of Telephone
+ip dhcp pool Name
+network x.x.x.x subnetmask
+default-router SVI IP
+option 150 ip ipAddress of CME-Router
+dns-server 8.8.8.8
+domain-name NAME
+
+5. FOR CME ROuter Telephony Setup
+conf t
+int port#
+no shut
+ip address x.x.x.x subnetmask
+
+!!For setup telephony service
+conf t
+telephony-service
+max-ephones # (1-40)
+max-dn # (1-20)
+ip source-address CME-Router_Ip port 2000
+auto assign # to # (1-40)
+create cnf_files
+
+!extensions
+ephone-dn #
+number #
+
+6. Link the Coreswitch to the CME-Router for access Voice VLAN using port assigning in Coreswitch
+conf t
+int port #
+switchport mode access
+switchport access vlan (the Voice vlan #)
+spanning-tree portfast
+no shut
+
