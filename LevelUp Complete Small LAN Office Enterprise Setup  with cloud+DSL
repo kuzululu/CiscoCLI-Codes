@@ -1,42 +1,41 @@
 Basic Small Company Topology
-                    ┌─────────────────┐
-                    │    Cloud-PT     │
-                    │    Internet     │
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │  DSL-Modem-PT   │
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │   Router 2811   │
-                    │       R1        │
-                    └────────┬────────┘
-                             │
-                        802.1Q Trunk
-                             │
-                    ┌────────▼────────┐
-                    │ Core Switch     │
-                    │  3560-24PS      │
-                    │     CORE-SW     │
-                    └───────┬─────────┘
-                            │
-             ┌──────────────┼──────────────┐
-             │              │              │
-        802.1Q Trunk   802.1Q Trunk   802.1Q Trunk
-             │              │              │
-       ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐
-       │ Access SW1│  │ Access SW2│  │ Access SW3│
-       │  2960-24TT│  │  2960-24TT│  │  2960-24TT│
-       └─────┬─────┘  └─────┬─────┘  └─────┬─────┘
-             │              │              │
-        ┌────┼────┐     ┌───┼────┐     ┌───┼────┐
-        │    │    │     │   │    │     │   │    │
-       PC   PC   Phone  PC  PC  Phone  PC  PC  Phone
+                    ┌─────────────┐
+                    │   Cloud-PT  │
+                    │  INTERNET   │
+                    └──────┬──────┘
+                           │
+                        DSL Link
+                           │
+                    ┌──────▼──────┐
+                    │  DSL Modem  │
+                    └──────┬──────┘
+                           │ Ethernet
+                           │
+                    ┌──────▼──────┐
+                    │  ISP Router │
+                    │    2811     │
+                    └──────┬──────┘
+                           │ Ethernet
+                           │
+                    ┌──────▼──────┐
+                    │ DHCP Router │
+                    │ Enterprise   │
+                    └──────┬──────┘
+                           │ Fa0/0
+                         TRUNK
+                           │
+                    ┌──────▼──────┐
+                    │ L2 Core     │
+                    │ 3560-24PS    │
+                    └──────┬──────┘
+                       /    |    \
+                      /     |     \
+                   SW01   SW02   SW03
 Devices
 Cloud-PT             x1
 DSL-Modem-PT         x1
-Router 2811          x1
+ISP Router 2811      x1
+DHCP Router 2811     x1
 Core Switch 3560-24PS x1
 Access Switch 2960-24TT x3
 PC-PT                x6
@@ -95,7 +94,8 @@ Learning progression
 Devices
 Cloud PT Cloud0
 DSL Modem PT
-2811 Router (DHCP)
+2811 ISP Router (connected to DSL Modem PT and DHCP Router)
+2811 DHCP Router (connected to ISP ROUTER and coreswitch)
 2811 Router (CME-Router)
 3650-24PS(Coreswitch)
 3560-24PS(Access Switch)
@@ -193,4 +193,1157 @@ switchport mode access
 switchport access vlan (the Voice vlan #)
 spanning-tree portfast
 no shut
+======================================================
 
+!NEW CONFIGURATIONS FOR WAN INTERFACE
+1. Verify muna bago mag-configure
+Sa DHCP router
+show ip interface brief
+==========================================
+Expected natin something similar:
+
+Interface              IP-Address      Status    Protocol
+FastEthernet0/0        unassigned      up        up
+FastEthernet0/0.10     192.168.10.254  up        up
+FastEthernet0/0.20     192.168.12.254  up        up
+FastEthernet0/0.30     192.168.11.254  up        up
+FastEthernet0/0.70     192.168.70.254  up        up
+FastEthernet0/1        unassigned      up        up
+
+Kung Fa0/1 up/up, physical connection natin ay okay.
+=================================================
+
+2. Ang unang configuration na susubukan natin
+Huwag muna NAT. Huwag muna routing protocol. Huwag muna OSPF.
+Una, alamin muna natin kung nakakakuha ng WAN IP ang Fa0/1.
+Try natin:
+
+!@DHCP Router
+conf t
+interface fa0/1
+ ip address dhcp
+ no shutdown
+end
+
+!Then verify
+show ip interface brief
+!Tingnan natin kung ang:
+!FastEthernet0/1
+!ay magkakaroon ng IP address.
+
+======================
+Ayan — expected yan, at actually magandang result siya kasi napatunayan nating hindi problema ang Fa0/1 physical link.
+
+Makikita sa output mo:
+
+FastEthernet0/1    unassigned    YES DHCP    up    up
+
+Ibig sabihin:
+
+up/up → ✅ Router ↔ DSL Modem physical link OK
+Method DHCP → ✅ Router is requesting DHCP
+unassigned → ❌ Walang DHCP server na sumasagot sa upstream
+So saan ang problema?
+
+Hindi sa router.
+
+Ang topology mo ngayon ay:
+
+Cloud-PT
+   │
+   │ Phone
+   ▼
+DSL-Modem
+   │
+   │ Ethernet
+   ▼
+DHCP-Router Fa0/1
+
+Pero ang Cloud-PT mismo ay hindi automatic na DHCP server/ISP router. Kailangan nating i-configure ang Cloud para i-associate ang DSL modem sa Ethernet side nito, at kailangan may ISP-side device na magbibigay ng IP/routing.
+Ito rin ang standard Packet Tracer DSL design: Cloud DSL connection maps the modem port to an Ethernet port, 
+while an ISP router/network sits on the other side.
+
+Una nating gawin — Cloud configuration
+
+Punta ka sa:
+
+Cloud-PT → Config → DSL
+Doon dapat may ganito:
+Connection
+From: Modem4
+To:   Ethernet6
+[Add]
+Gawin mo:
+Modem4  ───────── Ethernet6
+Ito ang logical association sa loob ng Cloud. Hindi sapat na physically connected
+lang ang Modem4; kailangan din itong i-map sa Ethernet interface ng Cloud.
+
+Pero may isang importanteng bagay
+
+Pagkatapos nito, hindi pa rin automatic magkakaroon ng IP ang Fa0/1 kung walang device sa kabilang side ng Ethernet6 na gumaganap bilang ISP.
+
+Kaya ang magiging architecture natin ay:
+
+                 ISP / INTERNET SIDE
+                       │
+                 ┌─────▼─────┐
+                 │ ISP Router│
+                 │ DHCP/NAT  │
+                 └─────┬─────┘
+                       │
+                  Ethernet
+                       │
+                  ┌────▼────┐
+                  │ Cloud-PT│
+                  └────┬────┘
+                       │ DSL
+                  ┌────▼─────┐
+                  │DSL Modem │
+                  └────┬─────┘
+                       │ Ethernet
+                       ▼
+                Fa0/1 DHCP-Router
+                       │
+                    Fa0/0
+                       │
+                  Core Switch
+
+Ito na ang totoong WAN simulation natin.
+At dito magiging interesting na talaga kasi matututunan mo na ang:
+LAN → Default Route → NAT/PAT → WAN → ISP → Internet simulation
+Kaya ngayon huwag muna mag-command sa router.
+Punta ka muna sa:
+Cloud-PT → Config → DSL
+at tingnan natin kung ano ang nakalagay sa From at To.
+Kung wala pa:
+Modem4 → Ethernet6
+i-add natin iyon.
+========================
+
+Ang isang device na magandang idagdag: ISP Router
+
+Kung ang goal natin ay level-up mula sa usual VLAN + Router DHCP setup papunta sa WAN/Internet, I recommend adding one 2811 Router as ISP Router.
+
+Gawin nating:
+
+                    ┌─────────────┐
+                    │   Cloud-PT  │
+                    │  INTERNET   │
+                    └──────┬──────┘
+                           │
+                        DSL Link
+                           │
+                    ┌──────▼──────┐
+                    │  DSL Modem  │
+                    └──────┬──────┘
+                           │ Ethernet
+                           │
+                    ┌──────▼──────┐
+                    │  ISP Router │
+                    │    2811     │
+                    └──────┬──────┘
+                           │ Ethernet
+                           │
+                    ┌──────▼──────┐
+                    │ DHCP Router │
+                    │ Enterprise   │
+                    └──────┬──────┘
+                           │ Fa0/0
+                         TRUNK
+                           │
+                    ┌──────▼──────┐
+                    │ L2 Core     │
+                    │ 3560-24PS    │
+                    └──────┬──────┘
+                       /    |    \
+                      /     |     \
+                   SW01   SW02   SW03
+
+
+Yes, ito na ang tamang bagong topology. 👍
+
+Nakikita ko na ngayon ang:
+
+Cloud-PT
+   │
+   │ DSL
+   ▼
+DSL-Modem
+   │
+   ▼
+ISP Router
+   │
+   ▼
+DHCP Router
+   │
+   │ trunk
+   ▼
+L2-CoreSwitch
+   ├── L2-SW01
+   ├── L2-SW02
+   └── L2-SW03
+
+At:
+
+CME Router
+     │
+     ▼
+L2-CoreSwitch
+Pero may isang importanteng correction
+
+Sa screenshot, mukhang:
+
+DSL-Modem
+    │
+    ▼
+ISP Router
+    │
+    ▼
+DHCP Router
+
+Tama ito. Huwag mo nang baguhin ang physical topology.
+
+Ang next step natin ngayon ay ISP Router configuration.
+
+Hindi muna tayo gagalaw sa:
+
+VLANs
+Access switches
+Core switch
+CME
+DHCP pools
+Fa0/0 subinterfaces
+
+Working na ang mga iyon.
+
+Ito ang magiging WAN design natin
+
+Gawin nating simple muna:
+
+DSL/ISP side
+
+ISP Router Fa0/0
+        │
+        │ 10.0.0.0/30
+        │
+DHCP Router Fa0/1
+
+Halimbawa:
+
+ISP Router Fa0/0
+10.0.0.1/30
+
+DHCP Router Fa0/1
+10.0.0.2/30
+
+Then ang DHCP Router ang magiging customer/enterprise router, habang ang ISP Router ang magiging provider router.
+
+Eventually:
+
+192.168.10.0/24 ─┐
+192.168.11.0/24 ─┤
+192.168.12.0/24 ─┤ → DHCP-Router → NAT → ISP-Router → DSL → Cloud
+192.168.70.0/24 ─┘
+Kaya ang next lesson natin:
+
+ISP Router muna.
+
+I-configure natin ang:
+
+Fa0/0 ng ISP Router
+Fa0/1 ng ISP Router
+WAN subnet
+Default/static routes
+Pagkatapos, babalik tayo sa DHCP Router para palitan ang Fa0/1 mula ip address dhcp tungo sa tamang WAN configuration.
+Then NAT/PAT.
+
+At doon mo na makikita kung bakit kailangan natin ng ISP Router.
+
+So stop muna tayo sa topology — tama na ito. Next move: ISP Router configuration, isang maliit na step lang para hindi ka malunod sa commands.
+===================================
+
+CONFIGURATIONS SIDE
+
+
+
+Yes. Since topology is ready, let's configure the ISP Router first. Huwag muna NAT; build the WAN path first.
+
+1. ISP Router
+
+Assuming:
+
+DSL-Modem Port 1
+      │
+      │
+ISP-Router Fa0/0
+      │
+      │
+ISP-Router Fa0/1
+      │
+      │
+DHCP-Router Fa0/1
+
+We'll use:
+
+ISP Fa0/0 = 10.0.0.1/30
+DHCP Fa0/1 = 10.0.0.2/30
+
+Wait — important correction: dahil may dalawang separate links, gamitin natin ang dalawang magkaibang /30 networks:
+
+DSL side:
+ISP Fa0/0 = 10.0.0.1/30
+
+Enterprise side:
+ISP Fa0/1 = 10.0.0.5/30
+DHCP Fa0/1 = 10.0.0.6/30
+
+So the final ISP config is:
+
+enable
+configure terminal
+
+hostname ISP-Router
+
+interface fa0/0
+ description TO_DSL_MODEM
+ ip address 10.0.0.1 255.255.255.252
+ no shutdown
+ exit
+
+interface fa0/1
+ description TO_DHCP_ROUTER_WAN
+ ip address 10.0.0.5 255.255.255.252
+ no shutdown
+ exit
+
+end
+
+2. DHCP Router
+
+Ngayon palitan natin yung ginawa mong:
+
+interface fa0/1
+ ip address dhcp
+
+ng static WAN IP:
+
+enable
+configure terminal
+
+interface fa0/1
+ description WAN_TO_ISP
+ no ip address dhcp
+ ip address 10.0.0.6 255.255.255.252
+ no shutdown
+ exit
+
+end
+
+Then verify:
+
+DHCP Router:
+
+show ip interface brief
+
+Dapat makita mo:
+
+FastEthernet0/1    10.0.0.6    up    up
+
+Then:
+
+ping 10.0.0.5
+
+Expected:
+
+!!!!!
+
+Kapag successful ang ping, ibig sabihin:
+
+DHCP-Router ←→ ISP-Router
+
+ay working na ang WAN link.
+
+3. Huwag muna natin gawin ito
+
+Huwag muna:
+
+ip route 0.0.0.0 ...
+
+Huwag muna NAT.
+
+Huwag muna galawin ang VLAN/subinterfaces.
+
+First objective lang natin:
+
+Cloud
+  ↓
+DSL Modem
+  ↓
+ISP Router
+  ↓
+DHCP Router
+
+at dapat ma-establish muna ang ISP Router ↔ DHCP Router.
+
+Pag nakuha mo na ang !!!! sa ping 10.0.0.5, send mo sa akin ang output ng:
+
+show ip interface brief
+
+ng ISP Router at DHCP Router, then next tayo sa routing.
+
+So ang next step natin ay huwag muna galawin ang LAN/VLAN/DHCP. I-build muna natin ang WAN path nang paisa-isa.
+
+Step 1 — Configure ISP Router
+
+Ang ISP Router ang magiging upstream router ng DHCP-Router.
+
+Assuming yung interface na nakakonekta sa DHCP-Router ay Fa0/0, configure:
+
+ISP-Router>en
+ISP-Router#conf t
+
+interface fa0/0
+ description WAN_TO_DHCP_ROUTER
+ ip address 10.0.0.5 255.255.255.252
+ no shutdown
+exit
+
+Then verify:
+
+show ip interface brief
+
+Dapat:
+
+FastEthernet0/0    10.0.0.5    up    up
+Step 2 — Test both directions
+
+Sa ISP Router:
+
+ping 10.0.0.6
+
+Dapat successful.
+
+Then sa DHCP Router:
+
+ping 10.0.0.5
+
+Dapat ideally:
+
+Success rate is 100 percent
+
+Yung 80% mo ngayon is acceptable as initial Packet Tracer behavior 
+habang nagse-settle ang link, pero gusto natin eventually 100%.
+
+Step 3 — Lagyan ng default route ang DHCP Router
+
+Ito ang importanteng bagong concept natin.
+
+Currently alam lang ng DHCP Router ang sarili niyang VLAN networks:
+
+192.168.10.0/24
+192.168.11.0/24
+192.168.12.0/24
+192.168.70.0/24
+
+Kailangan natin sabihin:
+
+"Kapag hindi ko alam kung saan pupunta ang destination, ipadala ko sa ISP Router."
+
+Sa DHCP Router:
+
+conf t
+ip route 0.0.0.0 0.0.0.0 10.0.0.5
+end
+
+Verify:
+
+show ip route
+
+Hanapin:
+
+S* 0.0.0.0/0 [1/0] via 10.0.0.5
+Step 4 — Ngayon naman ISP → DSL/Cloud
+
+Ito ang next major part.
+
+Topology mo ngayon:
+
+                    INTERNET
+                       |
+                    Cloud-PT
+                       |
+                   DSL Modem
+                       |
+                   ISP Router
+                       |
+                  10.0.0.5/30
+                       |
+                  10.0.0.6/30
+                       |
+                  DHCP Router
+                       |
+                   L2 Core
+                  /    |    \
+              VLAN10 VLAN20 VLAN30
+                       |
+                    VLAN70
+
+Hindi muna tayo magdadagdag ng device. Sapat na ang topology mo para matutunan natin ang basic WAN routing.
+
+Ang kailangan natin ngayon malaman ay anong interface ng ISP Router ang nakakonekta sa DSL Modem.
+
+Sa ISP Router, execute:
+
+show cdp neighbors
+
+or:
+
+show ip interface brief
+
+I-send mo sa akin yung output.
+
+Then bibigyan kita ng exact configuration para sa ISP Router → DSL Modem → Cloud, dahil doon na papasok ang:
+
+ISP-side IP addressing
+Default route
+Routing
+NAT/PAT
+Testing from VLAN clients hanggang "Internet"
+
+At doon magiging tunay na enterprise-style ang lab mo:
+
+PC
+ ↓
+Access Switch
+ ↓
+L2 Core
+ ↓
+Router-on-a-Stick
+ ↓
+DHCP Router
+ ↓
+ISP Router
+ ↓
+DSL Modem
+ ↓
+Cloud / Internet
+
+Next command mo muna:
+
+ISP-Router#show ip interface brief
+ISP-Router#show cdp neighbors
+
+I-send mo output — doon tayo magpapatuloy, hindi tayo tatalon agad sa NAT para malinaw ang bawat layer.
+=====================================================
+
+Ah, perfect. Confirmed na natin ang physical connection:
+
+Cloud-PT
+   │
+DSL Modem
+   │
+Fa0/0
+   │
+ISP Router
+Fa0/1
+   │
+10.0.0.5/30
+   │
+10.0.0.6/30
+   │
+DHCP Router
+
+So ang Fa0/0 ng ISP Router ang magiging WAN-facing interface papunta sa DSL Modem.
+
+Next step: ISP Router → DSL Modem
+
+Huwag muna tayong mag-NAT. Gawin natin muna ang basic routing path.
+
+Sa ISP Router, kailangan nating malaman kung anong addressing behavior
+ng DSL Modem/Cloud sa Packet Tracer. Dahil ang DSL Modem mo ay may Port 0 at Port 1 na parehong Up, connected na siya properly.
+
+Unang gawin:
+
+ISP-Router#show ip interface brief
+
+Alam na natin ngayon:
+
+Fa0/0 = 10.0.0.1
+Fa0/1 = 10.0.0.5
+
+Important: Napansin ko rin na ang Fa0/0 mo ay 10.0.0.1, 
+samantalang ang DHCP Router ay 10.0.0.6/30. Ibig sabihin, magkaibang subnet ang dalawang links:
+
+ISP Fa0/1
+10.0.0.5/30
+      │
+      │
+DHCP Fa0/1
+10.0.0.6/30
+
+Correct iyon.
+
+Pero ang DSL side:
+
+ISP Fa0/0
+10.0.0.1
+      │
+   DSL Modem
+      │
+   Cloud-PT
+
+ay kailangan nating bigyan ng upstream/WAN design.
+
+Gawin muna natin ito sa ISP Router
+ISP-Router#show run interface fa0/0
+
+I-send mo sa akin ang output nito.
+
+Huwag muna maglagay ng bagong IP sa Fa0/0. Gusto kong makita muna kung ano ang current configuration doon, 
+dahil connected na ang DSL Modem at ayaw nating sirain ang working link.
+
+Pag nakita natin iyon, ang sequence natin ay:
+
+DSL/Cloud → ISP routing → DHCP Router default route → NAT → test mula PC hanggang Cloud.
+
+At pagkatapos niyan, makikita mo na talaga kung paano gumagana ang enterprise LAN → edge router → ISP → WAN/Internet.
+
+=============================================================================================
+
+Ayan, malinaw na. Tama ang configuration mo sa ISP Router. Nakita natin:
+
+Fa0/0  10.0.0.1/30  → DSL Modem
+Fa0/1  10.0.0.5/30  → DHCP Router
+
+At importante: hindi ibig sabihin na kailangan nating lagyan ng 10.0.0.2 ang DSL Modem.
+Sa Packet Tracer DSL setup, ang Cloud + DSL Modem ay nagsisilbing WAN emulation/bridge path; 
+ang L3 endpoint sa side na ito ay ang ISP Router. Ang Cloud ang kino-configure para i-associate 
+ang DSL modem port sa Ethernet interface.
+
+So next step natin: i-configure ang Cloud
+
+Sa screenshot mo dati, mayroon ka nang:
+
+Cloud0
+ └── DSL
+      Modem4 → Ethernet6
+
+Kung ganyan na talaga siya, okay na iyon. Cisco/Packet Tracer DSL labs use exactly this mapping: Modem4 ↔ Ethernet6.
+
+Then verify natin ang DSL modem:
+
+DSL Modem0
+Port 0 → Cloud Modem4
+Port 1 → ISP Router Fa0/0
+
+Dapat:
+
+Cloud
+  │ Phone cable
+  ▼
+Modem Port 0
+Modem Port 1
+  │ Straight-through
+  ▼
+ISP Fa0/0
+Pero may isang malaking bagay tayong kailangan idagdag
+
+Ngayon mayroon kang:
+
+DHCP Router
+10.0.0.6
+    ↓
+ISP Router
+10.0.0.5
+10.0.0.1
+    ↓
+DSL
+    ↓
+Cloud
+
+Kailangan nating bigyan ang ISP Router ng route pabalik sa mga VLAN mo.
+
+Sa ISP Router:
+
+conf t
+
+ip route 192.168.10.0 255.255.255.0 10.0.0.6 !route ip from DCHP Router
+ip route 192.168.11.0 255.255.255.0 10.0.0.6
+ip route 192.168.12.0 255.255.255.0 10.0.0.6
+ip route 192.168.70.0 255.255.255.0 10.0.0.6
+
+end
+
+Bakit?
+
+Kapag halimbawa:
+
+PC VLAN 10
+192.168.10.x
+      ↓
+DHCP Router
+192.168.10.254
+      ↓
+10.0.0.6
+      ↓
+ISP Router
+10.0.0.5
+
+alam ng ISP Router kung paano bumalik sa 192.168.10.0/24 dahil sinabi natin:
+
+192.168.10.0/24 → via 10.0.0.6
+
+Same concept para sa HR, Finance at Voice.
+
+Then default route sa ISP Router
+
+Ito naman ang direction papunta sa Internet/Cloud.
+
+Pero bago natin ito gawin, gusto kong makita muna kung may actual upstream destination na
+pwede nating gamitin. Kaya huwag muna maglagay ng default route sa ISP Router.
+
+Run mo muna:
+
+ISP-Router#show ip route
+
+At ito rin:
+
+ISP-Router#ping 10.0.0.1
+
+Wait — mas importante: dahil 10.0.0.1 mismo ang Fa0/0 ng ISP Router, obviously magiging local
+address iyon. Ang gusto nating malaman ay kung ano ang nasa kabilang side ng DSL/Cloud path.
+
+So next natin ay Cloud + ISP side, then saka natin gagawin:
+
+PC
+ ↓
+DHCP Router
+ ↓
+ISP Router
+ ↓
+DSL
+ ↓
+Cloud
+ ↓
+Internet Server
+
+At NAT/PAT ang huling critical configuration para makapag-share ng iisang public/WAN 
+address ang buong 192.168.x.x enterprise LAN.
+
+Sa ngayon, huwag ka nang magdagdag ng device. Kumpleto na ang topology mo. Ang kailangan natin ay 
+configuration/routing na lang.
+
+=======================================================================================
+
+Yes — working na ang WAN link mo. 👍 Based sa screenshots, tama na ang foundation:
+
+DHCP Router Fa0/1 = 10.0.0.6/30
+ISP Router Fa0/1 = 10.0.0.5/30
+ping 10.0.0.5 from DHCP Router → successful
+ISP Router has return routes to VLAN 10/20/30/70 via 10.0.0.6
+
+So huwag muna nating galawin ang VLAN side. Ang next level natin ngayon ay gawing actual WAN/Internet path.
+
+Step 1 — Default route sa DHCP Router
+
+Ito ang pinaka-next:
+
+DHCP-Router#conf t
+DHCP-Router(config)#ip route 0.0.0.0 0.0.0.0 10.0.0.5
+DHCP-Router(config)#end
+
+Verify:
+
+DHCP-Router#show ip route
+
+Dapat may:
+
+S* 0.0.0.0/0 [1/0] via 10.0.0.5
+
+Meaning:
+
+"Kapag destination ay hindi ko alam, ipadala ko sa ISP Router 10.0.0.5."
+
+Step 2 — Verify mula sa DHCP Router
+DHCP-Router#ping 10.0.0.5
+
+Expected:
+
+!!!!!
+Success rate is 100 percent
+
+Tapos:
+
+DHCP-Router#traceroute 10.0.0.5
+
+Dapat direct lang:
+
+1  10.0.0.5
+Step 3 — Next natin NAT
+
+Ito na ang bagong concept na magandang idagdag sa topology mo.
+
+Current path:
+
+VLAN 10/20/30/70
+       |
+       v
+   L2 Core
+       |
+       v
+ DHCP Router
+ 10.0.0.6
+       |
+       | 10.0.0.4/30
+       |
+ ISP Router
+ 10.0.0.5
+       |
+       v
+ DSL Modem
+       |
+       v
+    Cloud/ISP
+
+Ang problema: ang internal networks mo ay:
+
+192.168.10.0/24
+192.168.11.0/24
+192.168.12.0/24
+192.168.70.0/24
+
+Private IPs yan. Hindi sila dapat directly lumabas sa Internet.
+
+Kaya NAT/PAT ang susunod nating aaralin:
+
+192.168.x.x
+     ↓
+NAT/PAT
+     ↓
+10.0.0.6
+     ↓
+10.0.0.5
+     ↓
+Internet
+
+At dito magiging mas realistic na enterprise setup na talaga siya.
+
+Pero isang bagay muna
+
+Huwag muna nating i-configure ang NAT. Gawin muna natin ang default route at 
+verification para isang concept lang bawat step.
+
+Sa DHCP Router, execute:
+
+conf t
+ip route 0.0.0.0 0.0.0.0 10.0.0.5
+end
+show ip route
+
+I-send mo sa akin yung output ng show ip route.
+
+Pag nakita natin ang S* 0.0.0.0/0, next natin NAT/PAT. 🚀
+
+===================================================================
+
+Ayos! 100% tama na ang default route. 🔥
+
+Ito ang importanteng line:
+
+S* 0.0.0.0/0 [1/0] via 10.0.0.5
+
+At:
+
+Gateway of last resort is 10.0.0.5 to network 0.0.0.0
+
+Ibig sabihin kapag ang DHCP Router ay may packet na hindi niya alam ang destination network, 
+ipapasa niya kay ISP Router 10.0.0.5.
+
+Next step: NAT/PAT sa DHCP Router
+
+Dahil ngayon:
+
+VLANs
+ ↓
+DHCP Router
+ ↓
+10.0.0.6
+ ↓
+ISP Router 10.0.0.5
+
+kailangan nating sabihin sa router:
+
+"Ang mga 192.168.x.x networks ko ay internal/private. I-NAT mo sila kapag lalabas sa WAN."
+
+1. Mark LAN as inside
+
+Sa DHCP Router:
+
+conf t
+
+interface fa0/0
+ ip nat inside
+ exit
+
+Important: dahil Router-on-a-Stick ang setup mo, ang Fa0/0 mismo ay trunk at may 
+subinterfaces. Mas magandang i-apply ang NAT inside sa bawat VLAN subinterface:
+
+interface fa0/0.10
+ ip nat inside
+ exit
+
+interface fa0/0.20
+ ip nat inside
+ exit
+
+interface fa0/0.30
+ ip nat inside
+ exit
+
+interface fa0/0.70
+ ip nat inside
+ exit
+2. Mark WAN as outside
+interface fa0/1
+ ip nat outside
+ exit
+
+So magiging ganito ang logic:
+
+Fa0/0.10 ─┐
+Fa0/0.20 ─┤
+Fa0/0.30 ─┤── INSIDE
+Fa0/0.70 ─┘
+
+Fa0/1 ──────── OUTSIDE
+               ↓
+          ISP Router
+
+3. Gumawa tayo ng NAT ACL
+access-list 1 permit 192.168.10.0 0.0.0.255
+access-list 1 permit 192.168.11.0 0.0.0.255
+access-list 1 permit 192.168.12.0 0.0.0.255
+access-list 1 permit 192.168.70.0 0.0.0.255
+
+4. Then immediately configure PAT
+conf t
+ ip nat inside source list 1 interface fa0/1 overload
+end
+overload = PAT, ibig sabihin maraming internal devices ang puwedeng gumamit ng isang outside IP address.
+
+Pero STOP muna pagkatapos nito
+
+Huwag muna nating i-configure ang ISP Router para sa Internet. Gusto kong i-verify muna natin na 
+tama ang NAT translation sa DHCP Router.
+
+Pagkatapos ng commands, gawin:
+
+show ip nat translations
+
+verify:
+
+show ip nat translations
+show ip nat statistics
+
+show ip nat statistics
+
+Tapos mula sa isang PC sa VLAN, halimbawa PC6, mag-ping tayo sa 10.0.0.5.
+
+Kapag may translation na lumabas, ibig sabihin nakagawa na tayo ng actual NAT/PAT flow. Doon na tayo
+pupunta sa next step: ISP Router → DSL Modem → Cloud, para talagang makumpleto natin ang simulated Internet path.
+
+============================================
+REMINDERS ONLY
+Exactly! 🔥 Ibig sabihin working na ang end-to-end path hanggang ISP Router.
+
+PC6 VLAN 20:
+
+PC6
+192.168.12.x
+   ↓
+VLAN 20 Gateway
+192.168.12.254
+   ↓
+DHCP Router
+   ↓
+PAT/NAT
+   ↓
+10.0.0.6
+   ↓
+ISP Router
+10.0.0.5
+
+At nag-reply si 10.0.0.5, so confirmed na:
+
+✅ VLAN 20 connectivity
+✅ Default gateway
+✅ Routing sa DHCP Router
+✅ Default route 0.0.0.0/0
+✅ NAT/PAT path
+✅ WAN link DHCP Router ↔ ISP Router
+Next natin: Internet side
+
+Ngayon huwag na nating galawin ang DHCP Router muna. Ang next target natin ay:
+
+PC
+ ↓
+DHCP Router
+ ↓
+ISP Router
+ ↓
+DSL Modem
+ ↓
+Cloud-PT
+
+Kailangan nating i-configure ang ISP Router Fa0/0, dahil iyon ang interface na nakakabit sa DSL Modem.
+
+Base sa screenshot mo:
+
+ISP Router
+Fa0/0 = 10.0.0.1/30
+Fa0/1 = 10.0.0.5/30
+
+At Fa0/0 → DSL Modem.
+
+Next step natin ay ayusin ang ISP Router → DSL Modem addressing/routing.
+
+===END OF REMINDER===
+
+Oo, dito na talaga tayo. Since nag-ping na ang PC6 → 10.0.0.5, tapos confirmed na ang NAT/PAT configuration, tapos na ang DHCP Router side for now.
+
+Ang kailangan natin ngayon ay gawing routable ang kabilang side ng ISP Router.
+
+Current topology
+PC6
+192.168.12.x
+   |
+   v
+L2-Switch
+   |
+   v
+DHCP Router
+Fa0/1 = 10.0.0.6/30
+   |
+   | 10.0.0.4/30
+   |
+   v
+ISP Router
+Fa0/1 = 10.0.0.5/30
+Fa0/0 = 10.0.0.1/30
+   |
+   v
+DSL Modem
+   |
+   v
+Cloud-PT
+
+Ang importante dito:
+
+10.0.0.1/30 sa ISP Router Fa0/0 ay may IP na, pero wala pa tayong Layer-3 neighbor sa kabilang side na may IP address.
+
+Ang DSL Modem + Cloud path mo ay essentially WAN medium lamang. Hindi natin puwedeng sabihan ang ISP Router:
+
+ip route 0.0.0.0 0.0.0.0 10.0.0.2
+
+hangga't wala tayong actual device na may 10.0.0.2.
+
+Next step: magdagdag tayo ng Internet/Upstream Router
+
+Ito ang magiging simulated Internet/ISP upstream router.
+
+Topology:
+
+                    INTERNET SIDE
+                         |
+                    Cloud-PT
+                         |
+                     DSL Modem
+                         |
+                    ISP Router
+                  Fa0/0 10.0.0.1
+                         |
+                  Fa0/1 10.0.0.5
+                         |
+                  DHCP Router
+                  Fa0/1 10.0.0.6
+                         |
+                  Internal VLANs
+
+Pero para magkaroon ng actual routed connection sa Cloud side, mas magandang maglagay tayo ng Internet Router sa kabilang side ng Cloud.
+
+Conceptually:
+
+LAN
+ |
+DHCP Router
+ |
+ISP Router
+ |
+DSL Modem
+ |
+Cloud
+ |
+Internet Router
+ |
+Internet Server
+Bakit kailangan natin ito?
+
+Para matutunan mo ang real routing path, hindi lang "nakakabit ang Cloud kaya Internet na."
+
+Magkakaroon tayo ng actual:
+
+192.168.12.x
+      ↓
+PAT
+      ↓
+10.0.0.6
+      ↓
+10.0.0.5
+      ↓
+10.0.0.1
+      ↓
+Internet Router
+      ↓
+Server
+
+At doon natin makikita ang buong flow.
+
+So ngayon, huwag muna mag-configure.
+
+Magdagdag ka muna ng isang 2811 Router at pangalanan natin:
+
+INTERNET-Router
+
+At isang Server:
+
+Internet-Server
+
+Then magiging:
+
+Cloud-PT
+   |
+   |
+Internet-Router
+   |
+Internet-Server
+
+Pero may isang importanteng detail: kailangan nating piliin kung aling Cloud port ang gagamitin para kumonekta sa Internet Router. Huwag muna basta mag-connect.
+
+Pag nailagay mo na ang Internet Router + Internet Server, send mo screenshot ng topology.
+
+Then ako ang magbibigay ng exact IP plan:
+
+ISP Router Fa0/0
+        ↕
+Internet Router Fa0/0
+
+Internet Router Fa0/1
+        ↕
+Internet Server
+
+at pagkatapos natin i-test:
+
+PC6 → Internet Server
+
+Kapag successful iyon, kumpleto na natin ang simulated Internet path + NAT/PAT + routing. 🚀
+================
