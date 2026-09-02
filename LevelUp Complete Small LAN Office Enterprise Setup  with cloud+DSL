@@ -90,3 +90,20 @@ Learning progression
 11. OSPF
         ↓
 12. ACL
+
+
+Devices
+Cloud PT Cloud0
+DSL Modem PT
+2811 Router (DHCP)
+2811 Router (CME-Router)
+3650-24PS(Coreswitch)
+3560-24PS(Access Switch)
+
+Cables
+CloudPT to DSL Modem(use Phone Cable)
+DSL to Router(use Straight Thru)
+
+Ports to Link
+DHCP Router to DSL (port Fa0/1 to Port 0)
+DSL Modem to Cloud PT (port 1 to Modem 4 or 5)
