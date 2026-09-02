@@ -180,7 +180,7 @@ max-ephones # (1-40)
 max-dn # (1-20)
 ip source-address CME-Router_Ip port 2000
 auto assign # to # (1-40)
-create cnf_files
+create cnf-files
 
 !extensions
 ephone-dn #
