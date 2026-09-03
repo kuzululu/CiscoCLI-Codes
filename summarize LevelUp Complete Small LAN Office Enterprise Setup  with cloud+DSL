@@ -411,6 +411,57 @@ Internet Router
  ↓
 Internet Server
 
-That next portion is where we can practice real routed WAN/Internet simulation, including the return path from an external network back to the LAN.
+That next portion is where we can practice real routed WAN/Internet simulation, including the 
+return path from an external network back to the LAN.
 
-In short: oo, tama ang pagkaintindi mo. Sa lab na ito, natutunan mo na ang DHCP Router side, ang ISP Router side, paano magbigay ng route sa bawat VLAN papunta sa 10.0.0.6, default route papunta sa 10.0.0.5, at paano i-declare ang NAT inside/outside at PAT. Magandang stopping point na ito bago tayo lumipat sa mas malaking WAN/Internet topology.su
+In short: oo, tama ang pagkaintindi mo. Sa lab na ito, natutunan mo na ang DHCP Router side, 
+ang ISP Router side, paano magbigay ng route sa bawat VLAN papunta sa 10.0.0.6, default route 
+papunta sa 10.0.0.5, at paano i-declare ang NAT inside/outside at PAT. Magandang stopping 
+point na ito bago tayo lumipat sa mas malaking WAN/Internet topology.su
+
+==================================
+MOSTLY SUMMARIZED CONFIG
+@
+ISP Router
+@configs
+int fa0/0
+description to DSL_Modem
+ip add 10.0.0.1 255.255.255.252
+
+int fa0/1
+description WAN_TO_DHCP_ROUTER
+ip address 10.0.0.5 255.255.255.252
+
+!The ISP Router needs to know where the internal VLAN networks are.
+ip route 192.168.10.0 255.255.255.0 10.0.0.6 
+ip route 192.168.11.0 255.255.255.0 10.0.0.6 
+ip route 192.168.12.0 255.255.255.0 10.0.0.6 
+ip route 192.168.17.0 255.255.255.0 10.0.0.6 
+
+@DHCP Router
+
+!configs
+!ip dhcp excluded-address
+!ip dhcp pool NAmes
+int fa0/0.vlanId# !repeat in each vlan
+description Name_DEFAULT-GATEWAY
+encapsulation dot1q vlanId#
+ip addresss SVI address
+ip nat inside !new command
+
+int fa0/1
+description MARK_WAN_AS_OUTSIDE_NAT
+ip address 10.0.0.6 255.255.255.252
+ip nat outside
+
+ip nat inside source list 1 interface fa0/1 overload
+
+!The DHCP Router needs a default route toward the ISP Router.
+ip route 0.0.0.0 0.0.0.0 10.0.0.5
+
+!We created ACL 1 to identify the internal networks that are allowed to be translated.
+access-list 1 permit 192.168.10.0 0.0.0.255
+access-list 1 permit 192.168.11.0 0.0.0.255
+access-list 1 permit 192.168.12.0 0.0.0.255
+access-list 1 permit 192.168.70.0 0.0.0.255
+ 
