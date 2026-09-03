@@ -1,6 +1,48 @@
 file link for reference 
 https://drive.google.com/file/d/1BfdtBddIIHB0M3hdcBp87s0fXAYKjeRR/view?usp=sharing
 
+Devices
+Cloud-PT             x1
+DSL-Modem-PT         x1
+ISP Router 2811      x1
+DHCP Router 2811     x1
+Core Switch 3560-24PS x1
+Access Switch 2960-24TT x3
+
+Topology Sumarize
+
+1. Cloud PT Cloud(0)(Config->DSL->(select Modem# and Ethernet 6)
+                     ||
+                     ||
+                     \/
+              2. DSL Modem-PT
+                     ||
+                     ||
+                     \/
+            3. ISP Router(2811)
+                     ||
+                     ||
+                     \/
+            4. DHCP Router(2811)
+                     ||
+                     ||              CME Router(2811)
+                     \/            //
+          5. L2-CoreSwitch(3650PS)
+                     ||
+                  // || \\
+                //   ||   \\
+              //     ||     \\
+            //       ||       \\
+          //         \/         \\
+6. L2 Access     7. L2 Access    8. L2 Access
+Switch(3560PS)   Switch(3560PS)  Switch(3560PS)
+    ||                ||            ||
+    ||                ||            ||
+    ||                ||            ||
+    \/                \/            \/
+  Client            CLient         CLient
+  Devices            Devices        Devices
+
 Enterprise Network Setup — DHCP Router + ISP Router + NAT/PAT
 🏗️ Network Topology
                     ┌─────────────┐
