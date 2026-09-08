@@ -1,0 +1,68 @@
+Oo, puwedeng-puwede kang mag-GUI, at para sa ginagawa natin ngayon mas madali pa nga. 👍
+
+Since factory reset na ang FortiGate, ganito ang gawin:
+
+1. Connect muna sa FortiGate
+
+Kung default configuration pa siya, gamitin ang management interface at pumunta sa:
+
+https://192.168.1.99
+
+Sa PC mo, kailangan nasa same subnet:
+
+IP Address:  192.168.1.10
+Subnet Mask: 255.255.255.0
+Gateway:     192.168.1.99
+
+Then browser:
+
+https://192.168.1.99
+2. Pag nasa GUI na tayo
+
+Doon na natin gagawin:
+
+Network → Interfaces
+
+At gagawa tayo ng VLAN interfaces:
+
+VLAN10
+VLAN20
+VLAN30
+VLAN40
+
+Bawat isa may sariling:
+
+VLAN ID
+IP address
+subnet mask
+gateway
+
+Then:
+
+Network → DHCP Server
+
+At gagawa tayo ng DHCP scope para sa bawat VLAN.
+
+3. Final structure
+FORTIGATE
+│
+├── VLAN 10
+│   ├── IP/Gateway: 192.168.10.1
+│   └── DHCP: 192.168.10.100-200
+│
+├── VLAN 20
+│   ├── IP/Gateway: 192.168.20.1
+│   └── DHCP: 192.168.20.100-200
+│
+├── VLAN 30
+│   ├── IP/Gateway: 192.168.30.1
+│   └── DHCP: 192.168.30.100-200
+│
+└── VLAN 40
+    ├── IP/Gateway: 192.168.40.1
+    └── DHCP: 192.168.40.100-200
+
+Mas okay na GUI muna tayo para makita mo visually kung paano ginagawa ang VLAN/SVI equivalent, 
+DHCP, at gateway. CLI naman tayo kapag kailangan nating mag-verify/troubleshoot.
+
+Kung nasa FortiGate GUI ka na ngayon, send mo screenshot ng Network → Interfaces at tutulungan kitang gawin ang unang VLAN step-by-step.
