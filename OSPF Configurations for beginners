@@ -1,0 +1,46 @@
+verfiy if CISco packet tracer is ospf is available
+
+config
+ router ospf ?
+
+Pero kung gusto mong i-verify/check mismo, eto ang paraan:
+
+1. Pumasok sa CLI ng router
+
+I-click ang router sa topology → CLI tab
+
+2. Pumunta sa global configuration mode
+
+Router> enable
+Router# configure terminal
+
+3. Subukan ang OSPF command — kung may ? help na lumalabas, gumagana ito
+
+Router(config)# router ospf ?
+
+Kung lalabas na parang:
+
+<1-65535>  Process ID
+
+...ibig sabihin supported ang OSPF at okay kang mag-configure.
+
+4. Full na pagsubok (basic OSPF setup)
+
+Router(config)# router ospf 1
+Router(config-router)# network 10.0.12.0 0.0.0.3 area 0
+Router(config-router)# network 10.0.13.0 0.0.0.3 area 0
+
+Kung tumanggap ang router ng mga commands na ito nang walang error, gumagana na ang OSPF process.
+
+5. I-verify na aktibo ang OSPF
+
+Router# show ip protocols
+Router# show ip ospf neighbor
+
+Kapag lumabas dito ang OSPF process at (pagkatapos ma-configure ang lahat ng router) makikita mo ang mga neighbor, kumpirmado nang gumagana ang OSPF sa buong topology mo.
+
+Bonus tip: Puwede mo ring tingnan kung anong IOS image/version ang ginagamit ng 2811 sa pamamagitan ng:
+
+Router# show version
+
+Pero halos lahat ng default 2811 image sa Packet Tracer ay may kasamang OSPF support na — hindi na kailangan mag-alala tungkol dito maliban kung custom/stripped-down image ang ginamit.
