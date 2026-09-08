@@ -1,0 +1,116 @@
+!Full factory reset
+!At the # prompt, type:
+execute factoryreset
+
+!Then you'll get a confirmation similar to:
+!This operation will reset the system to factory default!
+!Do you want to continue? (y/n)
+!Type:
+y
+
+!===============================
+
+Kung CLI command mismo para makita ang current/default IP address ng FortiGate interfaces, gamitin:
+
+diagnose ip address list
+
+Mas readable din:
+
+show system interface
+
+!===============================
+
+Sa FortiGate, ang tinatawag nating SVI sa Cisco ay technically VLAN interface / VLAN sub-interface.
+
+Step 1 — Tingnan muna ang physical interface names
+
+Sa CLI:
+
+show system interface
+
+Hanapin natin ang physical port na gagamitin natin later para sa trunk. Hindi pa natin kailangan ikabit ngayon.
+
+Halimbawa, sabihin nating gagamit tayo ng port3.
+
+Step 2 — Create VLAN 10
+
+Halimbawa:
+
+VLAN ID: 10
+Network: 192.168.10.0/24
+Gateway: 192.168.10.1
+DHCP:    192.168.10.100 - 192.168.10.200
+
+CLI:
+
+config system interface
+    edit "VLAN10"
+        set type vlan
+        set interface "port3"
+        set vlanid 10
+        set ip 192.168.10.1 255.255.255.0
+        set allowaccess ping
+    next
+end
+
+Pero huwag mo munang i-run kung hindi pa natin napipili ang physical interface. port3 ay example lamang.
+
+Step 3 — DHCP Server para sa VLAN 10
+
+Pag nagawa na ang VLAN interface:
+
+config system dhcp server
+    edit 10
+        set interface "VLAN10"
+        set default-gateway 192.168.10.1
+        set netmask 255.255.255.0
+        config ip-range
+            edit 1
+                set start-ip 192.168.10.100
+                set end-ip 192.168.10.200
+            next
+        end
+    next
+end
+
+Resulta:
+
+VLAN 10
+│
+├── Gateway: 192.168.10.1
+├── Network: 192.168.10.0/24
+├── DHCP:    192.168.10.100-200
+└── DHCP Server: FortiGate
+Step 4 — Gawin natin sa ibang VLAN
+
+Halimbawa:
+
+VLAN	Network	Gateway	DHCP Range
+10	192.168.10.0/24	192.168.10.1	.100–.200
+20	192.168.20.0/24	192.168.20.1	.100–.200
+30	192.168.30.0/24	192.168.30.1	.100–.200
+40	192.168.40.0/24	192.168.40.1	.100–.200
+
+So eventually magiging ganito:
+
+                    FORTIGATE
+                       │
+                 ┌─────┴─────┐
+                 │   port3   │
+                 └─────┬─────┘
+                       │
+       ┌───────────────┼───────────────┐
+       │               │               │
+    VLAN10           VLAN20          VLAN30 ...
+  192.168.10.1     192.168.20.1    192.168.30.1
+      DHCP             DHCP            DHCP
+
+Important: Since wala pa tayong Core connection, okay lang gawin muna ang VLAN interfaces. Pero kailangan natin ng 
+parent physical interface (port1, port2, port3, etc.) bago tayo makapag-create ng VLAN interface.
+
+👉 Next: Run mo muna:
+
+show system interface
+
+I-send mo ang output. Piliin natin kung anong port ang magiging parent interface ng lahat ng VLANs, 
+tapos gagawin natin VLAN 10 → gateway → DHCP muna. Pag successful, saka natin i-batch ang remaining VLANs.
