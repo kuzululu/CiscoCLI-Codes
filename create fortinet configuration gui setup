@@ -66,3 +66,198 @@ Mas okay na GUI muna tayo para makita mo visually kung paano ginagawa ang VLAN/S
 DHCP, at gateway. CLI naman tayo kapag kailangan nating mag-verify/troubleshoot.
 
 Kung nasa FortiGate GUI ka na ngayon, send mo screenshot ng Network → Interfaces at tutulungan kitang gawin ang unang VLAN step-by-step.
+
+========================================================
+
+Oo. Since nasa FortiGate GUI ka na at factory-default state pa, gawin natin nang maayos from zero.
+
+Pero may isang importanteng bagay bago mo gawin ang Step 2: 
+dahil naka-GUI ka ngayon sa 192.168.1.99, gusto kong siguraduhin
+muna kung anong interface ang ginagamit ng PC mo para sa current management connection. Sa screenshot, 
+mukhang active ang port 1 (green).
+
+Kung port 1 mismo ang nakakonekta sa PC mo, huwag muna nating gamitin ang port1 bilang parent ng VLANs dahil maaari nating putulin ang GUI connection.
+
+Send mo screenshot ng lower part ng Network → Interfaces (yung may internal, lan, or similar interface). 
+Titingnan natin kung saan talaga nakakabit ang 192.168.1.99, then sasabihin ko exactly kung ano ang pipindutin sa Step 2 para walang ma-disconnect.
+
+Ang target natin:
+
+FortiGate
+│
+├── VLAN 10 → 192.168.10.1 → DHCP
+├── VLAN 20 → 192.168.20.1 → DHCP
+├── VLAN 30 → 192.168.30.1 → DHCP
+└── VLAN 40 → 192.168.40.1 → DHCP
+
+At lahat ng .1 ay default gateway ng kani-kanilang VLAN.
+
+STEP 1 — Piliin ang port para sa future Core Switch
+
+Sa screenshot mo, nakikita natin ang physical ports:
+
+1  2  3  4  5  6  A  B
+
+Gawin nating port1 ang future trunk papunta sa Core Switch.
+
+Pero huwag mo munang ilipat ang cable mo sa port1 kung doon ka kasalukuyang nakakonekta. Ang configuration muna ang gagawin natin.
+
+STEP 2 — Gumawa ng VLAN 10 interface
+
+Punta sa:
+
+Network → Interfaces
+
+Click:
+
+Create New → Interface
+
+Piliin ang:
+
+Interface
+
+Then ilagay:
+
+Name:              VLAN10
+Type:              VLAN
+Interface:         port1
+VLAN ID:            10
+IP/Netmask:        192.168.10.1/24
+
+Sa Administrative Access, puwede muna:
+
+PING
+
+Then OK.
+
+Resulta:
+VLAN10
+├── VLAN ID: 10
+├── IP: 192.168.10.1
+└── Mask: 255.255.255.0
+
+Ang 192.168.10.1 ang magiging gateway ng VLAN 10.
+
+STEP 3 — Gumawa ng DHCP para sa VLAN 10
+
+Punta sa:
+
+Network → Interfaces
+
+Hanapin ang VLAN10.
+
+Click Edit.
+
+Sa interface configuration, hanapin ang DHCP Server section.
+
+Enable:
+
+DHCP Server
+
+Then configure approximately:
+
+Address Range:
+192.168.10.100
+to
+192.168.10.200
+
+Netmask:
+255.255.255.0
+
+Default Gateway:
+192.168.10.1
+
+DNS puwede muna:
+
+Same as system DNS
+
+Then OK/Apply.
+
+Ngayon:
+
+VLAN 10
+Network:    192.168.10.0/24
+Gateway:    192.168.10.1
+DHCP:       192.168.10.100-200
+STEP 4 — VLAN 20
+
+Balik:
+
+Network → Interfaces → Create New → Interface
+
+Name:          VLAN20
+Type:          VLAN
+Interface:     port1
+VLAN ID:       20
+IP/Netmask:    192.168.20.1/24
+
+Then enable DHCP:
+
+Range:
+192.168.20.100
+-
+192.168.20.200
+
+Gateway:
+192.168.20.1
+STEP 5 — VLAN 30
+Name:          VLAN30
+Type:          VLAN
+Interface:     port1
+VLAN ID:       30
+IP/Netmask:    192.168.30.1/24
+
+DHCP:
+
+192.168.30.100
+-
+192.168.30.200
+
+Gateway:
+192.168.30.1
+STEP 6 — VLAN 40
+Name:          VLAN40
+Type:          VLAN
+Interface:     port1
+VLAN ID:       40
+IP/Netmask:    192.168.40.1/24
+
+DHCP:
+
+192.168.40.100
+-
+192.168.40.200
+
+Gateway:
+192.168.40.1
+Final result sa FortiGate
+
+Dapat ganito ang makikita natin sa Network → Interfaces:
+
+Interface	VLAN ID	IP/Netmask	Role
+VLAN10	10	192.168.10.1/24	Gateway + DHCP
+VLAN20	20	192.168.20.1/24	Gateway + DHCP
+VLAN30	30	192.168.30.1/24	Gateway + DHCP
+VLAN40	40	192.168.40.1/24	Gateway + DHCP
+
+At later, kapag ikinabit na natin ang Core:
+
+                    FortiGate
+                       │
+                     port1
+                       │
+                 802.1Q TRUNK
+                       │
+                       ▼
+                  Core Switch
+                       │
+             ┌─────────┼─────────┐
+             │         │         │
+           VLAN10    VLAN20    VLAN30...
+
+verify the VLANs and DHCP using CLi
+show system interface
+show system dhcp server
+
+1. Pinakamaganda para makita ang physical port status
+get system interface physical
