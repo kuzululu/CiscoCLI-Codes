@@ -45,6 +45,13 @@ Bonus tip: Puwede mo ring tingnan kung anong IOS image/version ang ginagamit ng 
 Base sa topology mo (triangle sa gitna: R1↔R2↔R3, tapos bawat router may sariling switch), 
 eto ang cleanest na IP addressing scheme gamit ang Fa0/0, Fa0/1 (router-to-router links) at Eth1/0 (papuntang switch):
 
+Router# show version
+
+Pero halos lahat ng default 2811 image sa Packet Tracer ay may kasamang OSPF support na — 
+hindi na kailangan mag-alala tungkol dito maliban kung custom/stripped-down image ang ginamit.
+
+========================================
+
 Interface plan:
 
 Fa0/0 — link papunta sa isang kapitbahay na router
@@ -61,7 +68,33 @@ R3	Fa0/0	10.0.13.2	/30	R1 (Fa0/1)
 R3	Fa0/1	10.0.23.2	/30	R2 (Fa0/1)
 R3	Eth1/0	192.168.3.1	/24	CoreSw03
 
-Router# show version
+Sample config sa R1 (pareho lang ang pattern sa R2 at R3, palitan mo lang IPs):
 
-Pero halos lahat ng default 2811 image sa Packet Tracer ay may kasamang OSPF support na — 
-hindi na kailangan mag-alala tungkol dito maliban kung custom/stripped-down image ang ginamit.
+1. Create SVI per router interface ip addresses
+
+2. create ospf in each router for their designated routers neighbors
+
+@R1
+router ospf 1
+ network 10.0.12.0 0.0.0.3 area 0
+ network 10.0.13.0 0.0.0.3 area 0
+ network 192.168.1.0 0.0.0.255 area 0
+
+@R2:
+router ospf 1
+ network 10.0.12.0 0.0.0.3 area 0
+ network 10.0.23.0 0.0.0.3 area 0
+ network 192.168.2.0 0.0.0.255 area 0
+
+@R3
+router ospf 1
+ network 10.0.13.0 0.0.0.3 area 0
+ network 10.0.23.0 0.0.0.3 area 0
+ network 192.168.3.0 0.0.0.255 area 0
+
+verify 3 routers
+show ip route ospf
+show ip ospf neighbor
+
+Kapag nakita mo ang lahat ng LAN subnets (192.168.1.0, 192.168.2.0, 192.168.3.0) sa show ip route ng bawat router,
+gumagana na ang OSPF at nag-e-exchange na sila ng routes sa buong topology mo.
