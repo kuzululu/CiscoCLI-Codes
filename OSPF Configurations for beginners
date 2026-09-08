@@ -37,10 +37,31 @@ Kung tumanggap ang router ng mga commands na ito nang walang error, gumagana na 
 Router# show ip protocols
 Router# show ip ospf neighbor
 
-Kapag lumabas dito ang OSPF process at (pagkatapos ma-configure ang lahat ng router) makikita mo ang mga neighbor, kumpirmado nang gumagana ang OSPF sa buong topology mo.
+Kapag lumabas dito ang OSPF process at (pagkatapos ma-configure ang lahat ng router) 
+makikita mo ang mga neighbor, kumpirmado nang gumagana ang OSPF sa buong topology mo.
 
 Bonus tip: Puwede mo ring tingnan kung anong IOS image/version ang ginagamit ng 2811 sa pamamagitan ng:
 
+Base sa topology mo (triangle sa gitna: R1↔R2↔R3, tapos bawat router may sariling switch), 
+eto ang cleanest na IP addressing scheme gamit ang Fa0/0, Fa0/1 (router-to-router links) at Eth1/0 (papuntang switch):
+
+Interface plan:
+
+Fa0/0 — link papunta sa isang kapitbahay na router
+Fa0/1 — link papunta sa kabilang kapitbahay na router
+Eth1/0 — link papunta sa switch (LAN side)
+Router	Interface	IP Address	Subnet	Konektado sa
+R1	Fa0/0	10.0.12.1	/30	R2 (Fa0/0)
+R1	Fa0/1	10.0.13.1	/30	R3 (Fa0/0)
+R1	Eth1/0	192.168.1.1	/24	CoreSw02
+R2	Fa0/0	10.0.12.2	/30	R1 (Fa0/0)
+R2	Fa0/1	10.0.23.1	/30	R3 (Fa0/1)
+R2	Eth1/0	192.168.2.1	/24	CoreSw01
+R3	Fa0/0	10.0.13.2	/30	R1 (Fa0/1)
+R3	Fa0/1	10.0.23.2	/30	R2 (Fa0/1)
+R3	Eth1/0	192.168.3.1	/24	CoreSw03
+
 Router# show version
 
-Pero halos lahat ng default 2811 image sa Packet Tracer ay may kasamang OSPF support na — hindi na kailangan mag-alala tungkol dito maliban kung custom/stripped-down image ang ginamit.
+Pero halos lahat ng default 2811 image sa Packet Tracer ay may kasamang OSPF support na — 
+hindi na kailangan mag-alala tungkol dito maliban kung custom/stripped-down image ang ginamit.
