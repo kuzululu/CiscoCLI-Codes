@@ -95,6 +95,7 @@ router ospf 1
 verify 3 routers
 show ip route ospf
 show ip ospf neighbor
+show ip ospf interface brief
 
 Kapag nakita mo ang lahat ng LAN subnets (192.168.1.0, 192.168.2.0, 192.168.3.0) sa show ip route ng bawat router,
 gumagana na ang OSPF at nag-e-exchange na sila ng routes sa buong topology mo.
