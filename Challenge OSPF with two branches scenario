@@ -1,0 +1,42 @@
+github
+
+🎯 Challenge: 2-Site OSPF Network
+Topology
+        R1 (Site A) ── 10.10.10.0/30 ── R2 (Site B)
+Dalawang router lang, isang direktang link sa pagitan nila (point-to-point OSPF).
+
+Site A — R1
+Base Network: 192.168.10.0/24
+Native Trunking VLAN: 100
+2 VLAN IDs
+
+VLAN ID	Name	Hosts Needed
+10	SALES	25
+20	ADMIN	10
+Site B — R2
+Base Network: 192.168.20.0/24
+Native Trunking VLAN: 100
+2 VLAN IDs
+
+VLAN ID	Name	Hosts Needed
+30	OPS	50
+40	GUEST	15
+OSPF Link
+Link	Network	R1	R2
+R1 ↔ R2	10.10.10.0/30	10.10.10.1	10.10.10.2
+
+Gagawin mo (buong flow)
+1. VLSM Computation — hatiin yung 192.168.10.0/24 (Site A) at 192.168.20.0/24 (Site B)
+papunta sa 2 subnets base sa host requirement bawat isa (malaki muna bago maliit)
+
+2. VLAN Creation + Port Assigning + Trunking — sa switches mo (Native VLAN 100)
+
+3. Router Subinterfaces — Eth1/0.10, .20 (Site A) at Eth1/0.30, .40 (Site B), gamit yung gateway
+IP mula sa VLSM computation mo
+4. DHCP Pools — per VLAN, i-exclude yung gateway
+5. Inter-Router Link — 10.10.10.1/30 sa R1, 10.10.10.2/30 sa R2 (walang kailangang i-VLSM pa dito)
+6. OSPF Config — network statements para sa inter-router link AT sa apat na LAN subnets
+(network + wildcard lang, hindi interface name)
+7. Verify — show ip ospf neighbor, show ip route ospf
+8. Test — ping mula PC sa Site A papunta PC sa Site B
+
