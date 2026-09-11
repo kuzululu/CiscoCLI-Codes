@@ -1,0 +1,315 @@
+# 3-Site Full-Mesh OSPF (Area 0) Enterprise Network
+
+referrence simulation file packet tracer
+https://drive.google.com/file/d/1uR_Qrx9i09_7lIegEVGguxXcQHIRALW2/view?usp=sharing
+
+A beginner-to-intermediate OSPF lab simulating three branch sites (Site A, Site B, Site C), 
+each running Router-on-a-Stick VLAN segmentation, interconnected via a full-mesh OSPF single-area 
+(Area 0) topology.
+
+---
+
+## 📐 Topology
+
+```
+                         R1 (Site C)
+                        /            \
+                 10.0.12.0/30      10.0.13.0/30
+                      /                  \
+                 R2 (Site A) ---------- R3 (Site B)
+                          10.0.23.0/30
+```
+
+| Router | Site | Fa0/0 | Fa0/1 | Eth1/0 (Trunk to Core Switch) |
+|---|---|---|---|---|
+| R1 | Site C | 10.0.12.1/30 (→ R2) | 10.0.13.1/30 (→ R3) | Subinterfaces .50 / .60 |
+| R2 | Site A | 10.0.12.2/30 (→ R1) | 10.0.23.1/30 (→ R3) | Subinterfaces .10 / .20 |
+| R3 | Site B | 10.0.13.2/30 (→ R1) | 10.0.23.2/30 (→ R2) | Subinterfaces .30 / .40 |
+
+Each router is connected to a Core Switch via a trunk link (`Eth1/0`), which
+distributes VLANs down to access switches and end devices. Native VLAN 100 is used for 
+trunking on all sites.
+
+---
+
+## 🧮 VLSM Addressing Plan
+
+### Site C — R1 (Base Network: 192.168.3.0/24)
+| VLAN | Name | Hosts Needed | Subnet | Mask | Gateway | Usable Range |
+|---|---|---|---|---|---|---|
+| 50 | SITE-C-COA | 40 | 192.168.3.128/26 | 255.255.255.192 | 192.168.3.129 | .129 – .190 |
+| 60 | SITE-C-TSS | 100 | 192.168.3.0/25 | 255.255.255.128 | 192.168.3.1 | .1 – .126 |
+
+### Site A — R2 (Base Network: 192.168.1.0/24)
+| VLAN | Name | Hosts Needed | Subnet | Mask | Gateway | Usable Range |
+|---|---|---|---|---|---|---|
+| 10 | SITE-A-HEA | 10 | 192.168.1.32/28 | 255.255.255.240 | 192.168.1.33 | .33 – .46 |
+| 20 | SITE-A-IRS | 30 | 192.168.1.0/27 | 255.255.255.224 | 192.168.1.1 | .1 – .30 |
+
+### Site B — R3 (Base Network: 192.168.2.0/24)
+| VLAN | Name | Hosts Needed | Subnet | Mask | Gateway | Usable Range |
+|---|---|---|---|---|---|---|
+| 30 | SITE-B-CA | 20 | 192.168.2.64/27 | 255.255.255.224 | 192.168.2.65 | .65 – .94 |
+| 40 | SITE-B-CTS | 60 | 192.168.2.0/26 | 255.255.255.192 | 192.168.2.1 | .1 – .62 |
+
+### Inter-Router OSPF Links (/30)
+| Link | Network | Router A | Router B |
+|---|---|---|---|
+| R1 ↔ R2 | 10.0.12.0/30 | R1: 10.0.12.1 | R2: 10.0.12.2 |
+| R1 ↔ R3 | 10.0.13.0/30 | R1: 10.0.13.1 | R3: 10.0.13.2 |
+| R2 ↔ R3 | 10.0.23.0/30 | R2: 10.0.23.1 | R3: 10.0.23.2 |
+
+---
+
+## 🪜 Step-by-Step Build Process
+
+1. **VLAN Creation** — Created VLANs on Core/Access switches per site (Data VLANs + Native VLAN 100).
+2. **Port Assigning** — Assigned access ports to their respective VLANs on access switches.
+3. **Trunking** — Configured trunk links (Access ↔ Core ↔ Router) with native VLAN 100 and allowed VLAN list.
+4. **VLSM Computation** — Calculated subnets per VLAN based on host requirements (see table above).
+5. **Router Subinterfaces (Router-on-a-Stick)** — Created `dot1Q`-encapsulated subinterfaces on each router's 
+Eth1/0 to serve as the gateway (SVI-equivalent) for each VLAN.
+6. **DHCP Pools** — Configured DHCP pools per VLAN, excluding gateway addresses.
+7. **Inter-Router Links (Fa0/0, Fa0/1)** — Assigned /30 IP addresses to form the physical full-mesh triangle 
+between R1, R2, and R3.
+8. **OSPF Configuration** — Enabled `router ospf 1` on each router and added `network` statements for **both**
+the inter-router links **and** the LAN subinterfaces.
+9. **Verification** — Used `show ip ospf neighbor`, `show ip route ospf`, and `show ip ospf interface brief` 
+to confirm adjacencies and route propagation.
+10. **End-to-End Testing** — Pinged from a PC on one site to a PC on another site to confirm full Layer 3
+reachability across the OSPF domain.
+
+---
+
+## 🧠 Key Concept Learned: OSPF Doesn't Care About the Interface — Only the Network & Wildcard
+
+This was the core "aha" moment of the lab:
+
+> **OSPF does not activate based on interface *names* (like `Eth1/0.50`). It activates based on whether an 
+interface's IP address falls inside the `network` + `wildcard mask` range declared under `router ospf`.**
+
+In other words, the `network` command is **not** "turn on OSPF on interface X." It's:
+
+> "Search all my interfaces (physical, subinterface, loopback, SVI — doesn't matter which) for any IP
+address that falls within this range. Wherever you find a match, activate OSPF there and advertise that subnet."
+
+### Why This Matters for Router-on-a-Stick
+
+Since a Router-on-a-Stick setup uses **one physical interface with multiple subinterfaces**
+(each with its own IP/VLAN), you never reference the subinterface name directly in OSPF. You just make 
+sure the `network` + wildcard mask includes that subinterface's IP — OSPF finds it automatically.
+
+**Example (R1):**
+```
+interface eth1/0.50
+ encapsulation dot1Q 50
+ ip address 192.168.3.129 255.255.255.192
+!
+router ospf 1
+ network 192.168.3.128 0.0.0.63 area 0   ← matches 192.168.3.129, activates OSPF on Eth1/0.50 automatically
+```
+
+### The Mistake That Proved This Concept
+
+Early in the lab, R1's Fa0/0/Fa0/1 were mistakenly given `192.168.12.x` / `192.168.13.x` addresses 
+instead of `10.0.12.x` / `10.0.13.x`. Even though the `router ospf` config had the *correct* 
+`network 10.0.12.0 0.0.0.3 area 0` statement, **no OSPF adjacency formed** — because no 
+interface actually had an IP inside that range. This confirmed that OSPF strictly matches on
+**IP address ranges**, not interface names or intent.
+
+---
+
+## ✅ Verified Results
+
+- All three routers show **FULL** OSPF neighbor state with consistent DR/BDR roles across all three /30 links.
+- `show ip route ospf` on each router shows the LAN subnets of **both** other 
+sites (not just directly connected neighbors) — confirming full-mesh route propagation.
+- End-to-end ping test from a PC on Site A successfully reached a PC on Site B, confirming full
+Layer 3 connectivity across the OSPF domain.
+
+---
+
+## 📋 Full Router Configurations
+
+### R1 (Site C)
+```
+hostname R1
+
+ip dhcp excluded-address 192.168.3.129 192.168.3.140
+ip dhcp excluded-address 192.168.3.1 192.168.3.115
+
+ip dhcp pool VLAN-SITE-C-COA_POOL
+ network 192.168.3.128 255.255.255.192
+ default-router 192.168.3.129
+ dns-server 8.8.8.8
+ domain-name SITEC-COAPOOL.COM
+
+ip dhcp pool VLAN-SITE-C-TSS_POOL
+ network 192.168.3.0 255.255.255.128
+ default-router 192.168.3.1
+ dns-server 8.8.8.8
+ domain-name VLANSITE-C-TSS_POOL.COM
+
+interface FastEthernet0/0
+ ip address 10.0.12.1 255.255.255.252
+ duplex auto
+ speed auto
+
+interface FastEthernet0/1
+ ip address 10.0.13.1 255.255.255.252
+ duplex auto
+ speed auto
+
+interface Ethernet1/0
+ no ip address
+ duplex auto
+ speed auto
+
+interface Ethernet1/0.50
+ description VLAN-SITE-C-COA-Management
+ encapsulation dot1Q 50
+ ip address 192.168.3.129 255.255.255.192
+ ip nat inside
+
+interface Ethernet1/0.60
+ description VLAN-SITE-C-TSS-Management
+ encapsulation dot1Q 60
+ ip address 192.168.3.1 255.255.255.128
+ ip nat inside
+
+router ospf 1
+ log-adjacency-changes
+ network 10.0.13.0 0.0.0.3 area 0
+ network 10.0.12.0 0.0.0.3 area 0
+ network 192.168.3.128 0.0.0.63 area 0
+ network 192.168.3.0 0.0.0.127 area 0
+```
+
+### R2 (Site A)
+```
+hostname R2
+
+ip dhcp excluded-address 192.168.1.33 192.168.1.40
+ip dhcp excluded-address 192.168.1.1 192.168.1.20
+
+ip dhcp pool SITE-A-HEA_POOL
+ network 192.168.1.32 255.255.255.240
+ default-router 192.168.1.33
+ dns-server 8.8.8.8
+ domain-name SITE-A-HEA.COM
+
+ip dhcp pool SITE-A-IRS
+ network 192.168.1.0 255.255.255.224
+ default-router 192.168.1.1
+ dns-server 8.8.8.8
+ domain-name SITE-A-IRS_POOL.COM
+
+interface FastEthernet0/0
+ ip address 10.0.12.2 255.255.255.252
+ duplex auto
+ speed auto
+
+interface FastEthernet0/1
+ ip address 10.0.23.1 255.255.255.252
+ duplex auto
+ speed auto
+
+interface Ethernet1/0
+ no ip address
+ duplex auto
+ speed auto
+
+interface Ethernet1/0.10
+ description SITE-A-HEA_Management
+ encapsulation dot1Q 10
+ ip address 192.168.1.33 255.255.255.240
+ ip nat inside
+
+interface Ethernet1/0.20
+ description SITE-A-IRS_Management
+ encapsulation dot1Q 20
+ ip address 192.168.1.1 255.255.255.224
+ ip nat inside
+
+router ospf 1
+ log-adjacency-changes
+ network 10.0.12.0 0.0.0.3 area 0
+ network 10.0.23.0 0.0.0.3 area 0
+ network 192.168.1.32 0.0.0.15 area 0
+ network 192.168.1.0 0.0.0.31 area 0
+```
+
+### R3 (Site B)
+```
+hostname R3
+
+ip dhcp excluded-address 192.168.2.65 192.168.2.80
+ip dhcp excluded-address 192.168.2.1 192.168.2.50
+
+ip dhcp pool SITE-B-CA_POOL
+ network 192.168.2.64 255.255.255.224
+ default-router 192.168.2.65
+ dns-server 8.8.8.8
+ domain-name SITE-B-CA_POOL.COM
+
+ip dhcp pool SITE-B-CTS_POOL
+ network 192.168.2.0 255.255.255.192
+ default-router 192.168.2.1
+ dns-server 8.8.8.8
+ domain-name SITE-B-CTSPOOL.COM
+
+interface FastEthernet0/0
+ ip address 10.0.13.2 255.255.255.252
+ duplex auto
+ speed auto
+
+interface FastEthernet0/1
+ ip address 10.0.23.2 255.255.255.252
+ duplex auto
+ speed auto
+
+interface Ethernet1/0
+ no ip address
+ duplex auto
+ speed auto
+
+interface Ethernet1/0.30
+ description SITE-B-CA_Management
+ encapsulation dot1Q 30
+ ip address 192.168.2.65 255.255.255.224
+ ip nat inside
+
+interface Ethernet1/0.40
+ description SITE-B-CTS_Management
+ encapsulation dot1Q 40
+ ip address 192.168.2.1 255.255.255.192
+ ip nat inside
+
+router ospf 1
+ log-adjacency-changes
+ network 10.0.13.0 0.0.0.3 area 0
+ network 10.0.23.0 0.0.0.3 area 0
+ network 192.168.2.64 0.0.0.31 area 0
+ network 192.168.2.0 0.0.0.63 area 0
+```
+
+---
+
+## 🔍 Verification Commands Used
+
+```
+show ip interface brief
+show ip ospf neighbor
+show ip ospf interface brief
+show ip route ospf
+ping <remote-site-PC-IP>
+```
+
+---
+
+## 🚀 Next Steps
+
+- [ ] Add `passive-interface` on LAN-facing subinterfaces to stop unnecessary OSPF Hellos toward end-user VLANs
+- [ ] Add IP Phones + Voice VLAN + CME telephony service per site
+- [ ] Explore multi-area OSPF (e.g., R2 = Area 1, R3 = Area 2, R1 = Area 0/backbone)
+- [ ] Add NAT/PAT + WAN/ISP edge for internet simulation
