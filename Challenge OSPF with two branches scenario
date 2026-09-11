@@ -40,3 +40,6 @@ IP mula sa VLSM computation mo
 7. Verify — show ip ospf neighbor, show ip route ospf
 8. Test — ping mula PC sa Site A papunta PC sa Site B
 
+==================================================================================================
+
+
