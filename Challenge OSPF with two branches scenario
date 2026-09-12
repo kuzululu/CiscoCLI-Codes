@@ -41,5 +41,106 @@ IP mula sa VLSM computation mo
 8. Test — ping mula PC sa Site A papunta PC sa Site B
 
 ==================================================================================================
+CLI Commands
 
+Site A
 
+@Access Switch(L2)
+create VLANS, port assignment, trunking(custom native vlan is used)
+
+@Trunking Core Switch
+create VLANS, trunking(custom native vlan is used)
+
+-------------------------------------------
+@Router(R1)
+1. Create the SVIS and subinterface
+SVI for LAN subinterfaces
+conf t
+int port#.VLAN-ID
+encapsulation dot1q VLAN-ID#
+ip address 192.168.10.1 255.255.255.224
+ip nat inside
+no shut
+end
+
+for OSPF port
+conf t
+int port#
+ip address 10.10.10.1 255.255.255.252
+no shut
+end
+
+2. Create IP DHCP POOL in each VLANS
+IP DHCP POOL
+conf t
+network 192.168.10.0 255.255.255.224
+default-router 192.168.10.1 255.255.255.224
+dns-server 8.8.8.8
+domain-name NAME.COM
+ip dhcp excluded-address 192.168.10.1 192.168.10.30 !optional
+end
+
+!for OPSF Link Configurations
+!note the network and wildcard neighbor is mus be inputed not the device of the configuring device
+meaning the other devices
+
+@R1 link to R2 and Site-A Coreswitch
+conf t
+router ospf 1
+log-adjancency-changes
+network 10.10.10.0 0.0.0.3 area 0 !(Area 0 is the backbone of each site)
+network 192.168.10.0 0.0.0 0.0.0.31 area 0
+end
+-----------------------------------------------
+
+=======================================================
+
+SITE B
+
+@Access Switch(L2)
+create VLANS, port assignment, trunking(custom native vlan is used)
+
+@Trunking Core Switch
+create VLANS, trunking(custom native vlan is used)
+
+-------------------------------------------
+@Router(R2)
+1. Create the SVIS and subinterface
+SVI for LAN subinterfaces
+conf t
+int port#.VLAN-ID
+encapsulation dot1q VLAN-ID#
+ip address 192.168.20.1 255.255.255.224
+ip nat inside
+no shut
+end
+
+for OSPF port
+conf t
+int port#
+ip address 10.10.10.2 255.255.255.252
+no shut
+end
+
+2. Create IP DHCP POOL in each VLANS
+IP DHCP POOL
+conf t
+network 192.168.20.0 255.255.255.224
+default-router 192.168.20.1 255.255.255.224
+dns-server 8.8.8.8
+domain-name NAME.COM
+ip dhcp excluded-address 192.168.20.1 192.168.20.30 !optional
+end
+
+!for OPSF Link Configurations
+!note the network and wildcard neighbor is mus be inputed not the device of the configuring device
+meaning the other devices
+
+@R2 link to R1 and Site-B Coreswitch
+conf t
+router ospf 1
+log-adjancency-changes
+network 10.10.10.0 0.0.0.3 area 0 !(Area 0 is the backbone of each site)
+network 192.168.20.0 0.0.0 0.0.0.31 area 0
+end
+-----------------------------------------------
