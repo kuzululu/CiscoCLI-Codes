@@ -89,7 +89,7 @@ conf t
 router ospf 1
 log-adjancency-changes
 network 10.10.10.0 0.0.0.3 area 0 !(Area 0 is the backbone of each site)
-network 192.168.10.0 0.0.0 0.0.0.31 area 0
+network 192.168.10.0 0.0.0.31 area 0
 end
 -----------------------------------------------
 
