@@ -179,5 +179,6 @@ show ip ospf neighbor
 show ip ospf interface brief
 show ip route ospf
 sh ip ospf
+sh ip ospf database
 ping <remote-site-PC-IP>
 
