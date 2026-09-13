@@ -110,6 +110,8 @@ ip dhcp excluded-address x.x.x.x x.x.x.x !(ip addresses) !for ranges
 verification
 sh ip dhcp pool
 sh ip dhcp binding
+sh run | inc dhcp
+sh run | sec dhcp
 -----------------------------------------------
 -----------------------------------------------
 
