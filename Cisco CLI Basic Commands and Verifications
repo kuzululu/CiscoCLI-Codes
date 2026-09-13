@@ -1,0 +1,183 @@
+Basic Commands + Security
+
+privilege mode
+enable
+config terminal
+
+configuration mode
+---------------------------------
+no logging console
+no ip domain-name
+no ip domain-lookup
+no ip routing(optional usually use for NON SVI switch)
+
+basic security 
+line console 0
+password 123
+login
+exit
+line vty 0 15
+password 123
+login
+exit
+service password-encryption
+--------------------------------------------
+--------------------------------------------
+VLANS CLI
+vlan #
+name VLAN-NAME
+
+VLAN port ASSIGNING
+int port#
+switchport mode access
+switchport access vlan #
+spanning-tree portfast
+switchport voice vlan # !(note: this is use for voice vlan if voice vlan no need to use switchport mode access)
+no shut
+
+verification
+sh vlan br or sh vlan b
+---------------------------------------------
+---------------------------------------------
+TRUNKING switch
+
+switchport mode trunk !!(if error in mode trunk use the next CLI)
+switchport trunk encapsulation dot1q !!(then use the first CLI again)
+switchport trunk native vlan # !(allowed to use another vlan for trunkin not the default 1)
+switchport trunk allowed vlan # !(ranges vlan #)
+switchport trunk allowed vlan add Vlan # !(add specific vlan #)
+switchport trunk allowed vlan remove Vlan # !(remove specific vlan #)
+
+verification
+sh cdp nei (check connection status)
+sh int trunk
+----------------------------------------------
+----------------------------------------------
+
+switches SVI for coreSwitch SVI
+int vlan #
+ip address x.x.x.x x.x.x.x !(ip add subnet mask)
+no shut
+ip nat inside
+
+For Telephony SVI
+@CME Router ip address handles the telephone services
+int vlan #
+ip address x.x.x.x x.x.x.x  !ip address subnet mask
+ip nat inside
+no shut
+
+verification
+sh ip int route
+-----------------------------------------------
+-----------------------------------------------
+
+Router Subinterfaceces = Switch SVI
+port#.vlan#
+encapsulation dot1q vlan#
+ip address x.x.x.x x.x.x.x !(ip add subnet mask)
+no shut
+ip nat inside
+
+For Telephony Subinterface
+@CME Router ip address handles the telephone services
+port#.vlan#
+ip address x.x.x.x x.x.x.x  !ip address subnet mask
+ip nat inside
+no shut
+
+verification
+sh ip route
+----------------------------------------------
+----------------------------------------------
+
+DHCP Command
+ip dhcp pool NaME
+network x.x.x.x x.x.x.x !(ip add subnet mask)
+default-router x.x.x.x !(the ip address of the SVI or subinterfaces)
+dns-server 8.8.8.8
+domain-name NAME.COM
+
+Voice DHCP
+for ip dhcp pool VOICE
+network x.x.x.x x.x.x.x !(ip add subnet mask)
+default-router x.x.x.x !(address of the SVI/Subinterface)
+option 150 ip x.x.x.x !(ip add) @ip address of the CME-Router
+
+!optional
+ip dhcp excluded-address x.x.x.x x.x.x.x !(ip addresses) !for ranges
+
+verification
+sh ip dhcp pool
+sh ip dhcp binding
+-----------------------------------------------
+-----------------------------------------------
+
+ACL Command
+!extended acl
+ip access-list extended NAME-Policy
+deny ip SOURCE_NETWORK SOURCE_WILDCARD DEST_NETWORK DEST_WILDCARD
+permit ip any any
+
+APPLY ACL
+interface vlan # 
+ip access-group NAME-POLICY in
+
+REMOVE ACL
+interface vlan #
+no ip access-group NAME-POLICY in
+
+VERIFY ACL
+show access-lists
+show ip access-lists
+show running-config | include access-group
+-----------------------------------------
+-----------------------------------------
+
+Special Telephone Services
+@CME Router
+Routed Link papuntang CME Router
+@Core switch
+int port#
+switchport mode access
+switchport access vlan #
+spanning-tree portfast
+
+@CME Router
+telephony-service
+max-ephones 20
+max-dn 20
+ip source-address x.x.x.x port 2000 @ip source is the CME-Router and port 2000 is the default by the cisco)
+auto assign 1 to 20
+create cnf-files
+
+@Extensions
+ephone-dn 1
+number 1001
+
+and so  on.....
+
+
+verifications
+
+show ephone
+show ephone registered
+show telephony-service
+show running-config | section telephony-service
+
+----------------------------------------
+----------------------------------------
+
+router ospf
+router ospf 1
+router-id x.x.x.x !optional
+network x.x.x.x x.x.x.x area0 (the subnet and wildcard area 0) take note just take the neigbor network
+
+verification
+show ip interface brief
+show ip ospf neighbor
+show ip ospf interface brief
+show ip route ospf
+sh ip ospf
+ping <remote-site-PC-IP>
+
