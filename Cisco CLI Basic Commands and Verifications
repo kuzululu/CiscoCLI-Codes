@@ -165,7 +165,10 @@ verifications
 show ephone
 show ephone registered
 show telephony-service
-show running-config | section telephony-service
+sh run | sec telephony
+sh run | sec ephone
+sh run | inc ephone
+
 
 ----------------------------------------
 ----------------------------------------
