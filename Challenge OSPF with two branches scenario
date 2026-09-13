@@ -147,3 +147,33 @@ network 10.10.10.0 0.0.0.3 area 0 !(Area 0 is the backbone of each site)
 network 192.168.20.0 0.0.0 0.0.0.31 area 0
 end
 -----------------------------------------------
+
+verify commands
+
+check router ospf
+show ip interface brief
+show ip ospf neighbor
+show ip ospf interface brief
+show ip route ospf
+ping <remote-site-PC-IP>
+
+check VLANS
+show vlan br
+
+check SVI(switch), Subinterface(router)
+sh ip route
+sh ip int br | ex una
+
+check trunking 
+sh int trunk
+
+check connection status
+sh int status
+sh cdp neigh
+
+check dhcp pool
+sh ip dhcp pool
+sh ip dhcp binding 
+
+check all configurations
+sh run
