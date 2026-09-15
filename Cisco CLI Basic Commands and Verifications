@@ -159,6 +159,16 @@ number 1001
 
 and so  on.....
 
+fore dial peer site to site call
+!first need to ip route the CME ip address
+conf t
+ ip route 0.0.0.0 0.0.0.0 ip-address-cme-router
+ exit
+dial-peer voice 100 voip
+ destination-pattern 2... !(the destination CME Router in other site)
+ session target ipv4:192.168.2.2 !(the destination CME Router in other site)
+ dtmf-relay h245-alphanumeric
+ codec g711ulaw
 
 verifications
 
