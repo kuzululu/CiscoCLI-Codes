@@ -179,6 +179,15 @@ sh run | sec telephony
 sh run | sec ephone
 sh run | inc ephone
 
+! From Site-A-CME-R
+ping 192.168.2.2
+show running-config | section dial-peer
+show running-config | section ip route
+
+! From Site-B-CME-R
+ping 192.168.0.194
+show running-config | section dial-peer
+show running-config | section ip route
 
 ----------------------------------------
 ----------------------------------------
