@@ -1,0 +1,969 @@
+# FortiGate-80F + Cisco L3 Core Switch + L2 Access Switch
+
+## 1. Project Overview
+
+This lab demonstrates a network design where:
+
+-   **FortiGate-80F** provides Internet access, firewall security, and
+    NAT.
+-   **Cisco L3 Core Switch** provides:
+    -   Inter-VLAN routing
+    -   SVI default gateways
+    -   DHCP services
+    -   Default route toward the FortiGate
+-   **Cisco L2 Access Switch** provides access ports for end devices and
+    a trunk uplink to the Core Switch.
+-   **VLAN 100** is used as the transit network between the Core Switch
+    and FortiGate.
+-   **VLAN 999** is configured as the native VLAN on the
+    Core-to-FortiGate trunk.
+
+> This documentation is based on the configuration outputs collected
+> from the lab. Some commands are presented as a clean configuration
+> sequence for study and re-creation, not as a claim that every command
+> was executed in exactly this order.
+
+------------------------------------------------------------------------
+
+## 2. Logical Topology
+
+``` text
+                         INTERNET / ISP
+                               |
+                         FortiGate-80F
+                       WAN1 / WAN2 DHCP
+                               |
+                  FW-TRANSIT VLAN 100
+                    10.255.100.2/30
+                               |
+                802.1Q TRUNK - VLAN 100
+                    Native VLAN 999
+                               |
+                    Cisco L3 Core Switch
+                    VLAN100: 10.255.100.1/30
+                               |
+                802.1Q TRUNK - VLAN 10-40,100
+                    Native VLAN 100
+                               |
+                    Cisco L2 Access Switch
+                               |
+       -------------------------------------------------
+       |                 |               |             |
+   VLAN 10           VLAN 20         VLAN 30       VLAN 40
+   Servers           IT Dept        Full House     In House
+   192.168.1.0/24    192.168.2.0/24 192.168.3.0/24 192.168.4.0/24
+```
+
+------------------------------------------------------------------------
+
+## 3. VLAN and IP Addressing Plan
+
+  -------------------------------------------------------------------------
+  VLAN              Purpose             Network           Default Gateway
+  ----------------- ------------------- ----------------- -----------------
+  10                Server VLAN         192.168.1.0/24    192.168.1.1
+
+  20                IT Department       192.168.2.0/24    192.168.2.1
+
+  30                Full House          192.168.3.0/24    192.168.3.1
+                    Department                            
+
+  40                In House Department 192.168.4.0/24    192.168.4.1
+
+  100               Core-to-FortiGate   10.255.100.0/30   Core:
+                    transit                               10.255.100.1
+
+  999               Unused native VLAN  No IP assigned    None
+  -------------------------------------------------------------------------
+
+### Transit Link
+
+  Device                 Interface      IP Address
+  ---------------------- -------------- -----------------
+  Cisco L3 Core Switch   SVI VLAN 100   10.255.100.1/30
+  FortiGate-80F          FW-TRANSIT     10.255.100.2/30
+
+------------------------------------------------------------------------
+
+## 4. Traffic Flow
+
+### Client-to-Internet Traffic
+
+1.  A client receives an IP address from the Cisco L3 Core Switch DHCP
+    server.
+
+2.  The client uses the VLAN SVI as its default gateway.
+
+3.  The Core Switch routes the traffic toward its default route:
+
+    ``` cisco
+    ip route 0.0.0.0 0.0.0.0 10.255.100.2
+    ```
+
+4.  The FortiGate receives the traffic through `FW-TRANSIT`.
+
+5.  A FortiGate firewall policy permits the traffic from the transit
+    interface to the WAN interface.
+
+6.  FortiGate performs NAT toward the Internet.
+
+7.  Return traffic is routed back through the FortiGate to the Core
+    Switch.
+
+### Important Routing Concept
+
+This design uses **static routing**, not OSPF.
+
+-   The Core Switch has a default route toward the FortiGate.
+-   The FortiGate needs routes back to the internal VLAN networks.
+-   The Core Switch remains responsible for the client VLAN gateways and
+    DHCP.
+
+------------------------------------------------------------------------
+
+# 5. FortiGate-80F Configuration
+
+## 5.1 WAN Interfaces
+
+The current configuration shows:
+
+``` fortigate
+config system interface
+    edit "wan1"
+        set mode dhcp
+        set allowaccess ping
+        set role wan
+    next
+    edit "wan2"
+        set mode dhcp
+        set allowaccess ping
+        set role wan
+    next
+end
+```
+
+### Explanation
+
+-   `wan1` obtains its IP address through DHCP.
+-   `wan2` also obtains its IP address through DHCP.
+-   Ping management access is enabled on these interfaces.
+-   The current output does not establish whether WAN2 is actively used
+    for failover or load balancing.
+
+------------------------------------------------------------------------
+
+## 5.2 Existing LAN Hardware-Switch Interface
+
+``` fortigate
+config system interface
+    edit "internal"
+        set ip 192.168.5.1 255.255.255.0
+        set allowaccess ping https ssh fabric
+        set type hard-switch
+        set alias "LAN"
+        set stp enable
+        set role lan
+    next
+end
+```
+
+### Explanation
+
+-   `internal` is a hard-switch interface.
+-   It has the IP address `192.168.5.1/24`.
+-   HTTPS and SSH management access are enabled.
+-   This interface is also used as the parent interface for
+    `FW-TRANSIT`.
+
+> Before modifying `internal`, verify which physical ports belong to
+> this hardware switch and whether any active devices depend on its
+> existing IP address.
+
+------------------------------------------------------------------------
+
+## 5.3 FortiGate Transit VLAN Interface
+
+``` fortigate
+config system interface
+    edit "FW-TRANSIT"
+        set vdom "root"
+        set ip 10.255.100.2 255.255.255.252
+        set allowaccess ping
+        set device-identification enable
+        set role lan
+        set interface "internal"
+        set vlanid 100
+    next
+end
+```
+
+### Explanation
+
+-   Interface name: `FW-TRANSIT`
+-   Parent interface: `internal`
+-   VLAN ID: `100`
+-   IP address: `10.255.100.2/30`
+-   The interface is used as the routed transit point toward the Core
+    Switch.
+
+This is a VLAN subinterface. The FortiGate receives VLAN 100 traffic
+over the trunk connected to the parent interface.
+
+------------------------------------------------------------------------
+
+## 5.4 FortiGate Static Routes
+
+The FortiGate must know how to reach the internal VLAN networks through
+the Core Switch.
+
+``` fortigate
+config router static
+    edit 0
+        set dst 192.168.1.0 255.255.255.0
+        set gateway 10.255.100.1
+        set device "FW-TRANSIT"
+    next
+    edit 0
+        set dst 192.168.2.0 255.255.255.0
+        set gateway 10.255.100.1
+        set device "FW-TRANSIT"
+    next
+    edit 0
+        set dst 192.168.3.0 255.255.255.0
+        set gateway 10.255.100.1
+        set device "FW-TRANSIT"
+    next
+    edit 0
+        set dst 192.168.4.0 255.255.255.0
+        set gateway 10.255.100.1
+        set device "FW-TRANSIT"
+    next
+end
+```
+
+### Route Purpose
+
+  Destination      Next Hop       Interface
+  ---------------- -------------- ------------
+  192.168.1.0/24   10.255.100.1   FW-TRANSIT
+  192.168.2.0/24   10.255.100.1   FW-TRANSIT
+  192.168.3.0/24   10.255.100.1   FW-TRANSIT
+  192.168.4.0/24   10.255.100.1   FW-TRANSIT
+
+> Check the existing routing table before adding duplicate routes. The
+> FortiGate also needs a valid default route toward the ISP.
+
+------------------------------------------------------------------------
+
+## 5.5 Basic FortiGate Firewall Policy
+
+Example policy for testing LAN-to-Internet connectivity:
+
+``` fortigate
+config firewall policy
+    edit 0
+        set name "LAN-to-Internet"
+        set srcintf "FW-TRANSIT"
+        set dstintf "wan1"
+        set srcaddr "all"
+        set dstaddr "all"
+        set action accept
+        set schedule "always"
+        set service "ALL"
+        set nat enable
+    next
+end
+```
+
+### Security Notes
+
+This is a basic connectivity-testing example.
+
+For production use:
+
+-   Use specific source address objects.
+-   Restrict services where possible.
+-   Review policy order.
+-   Avoid duplicate or overly broad policies.
+-   Confirm that the correct WAN interface is used.
+-   Consider security profiles based on the organization's requirements.
+
+------------------------------------------------------------------------
+
+# 6. Cisco L3 Core Switch Configuration
+
+## 6.1 Enable Layer 3 Routing
+
+``` cisco
+enable
+configure terminal
+
+ip routing
+```
+
+### Explanation
+
+`ip routing` enables the Layer 3 switch to route traffic between VLAN
+interfaces.
+
+------------------------------------------------------------------------
+
+## 6.2 DHCP Excluded Addresses
+
+``` cisco
+ip dhcp excluded-address 192.168.1.1 192.168.1.50
+ip dhcp excluded-address 192.168.2.1 192.168.2.100
+ip dhcp excluded-address 192.168.3.1 192.168.3.150
+ip dhcp excluded-address 192.168.4.1 192.168.4.200
+```
+
+### Explanation
+
+These addresses are excluded from DHCP allocation.
+
+They reserve the specified ranges for gateways, servers, infrastructure,
+or other manually assigned devices.
+
+------------------------------------------------------------------------
+
+## 6.3 DHCP Pools
+
+### VLAN 10 - Server Pool
+
+``` cisco
+ip dhcp pool SERVERPOOL
+ network 192.168.1.0 255.255.255.0
+ default-router 192.168.1.1
+ dns-server 8.8.8.8
+ domain-name SERVERPOOL.COM
+```
+
+### VLAN 20 - IT Department
+
+``` cisco
+ip dhcp pool ITDEPT-POOL
+ network 192.168.2.0 255.255.255.0
+ default-router 192.168.2.1
+ dns-server 8.8.8.8
+ domain-name ITDEPTPOOL.COM
+```
+
+### VLAN 30 - Full House Department
+
+``` cisco
+ip dhcp pool FULLHOUSEDEPT-POOL
+ network 192.168.3.0 255.255.255.0
+ default-router 192.168.3.1
+ dns-server 8.8.8.8
+ domain-name FULLHOUSEDEPT.COM
+```
+
+### VLAN 40 - In House Department
+
+``` cisco
+ip dhcp pool INHOUSEDEPT-POOL
+ network 192.168.4.0 255.255.255.0
+ default-router 192.168.4.1
+ dns-server 8.8.8.8
+ domain-name INHOUSEDEPT.COM
+```
+
+------------------------------------------------------------------------
+
+## 6.4 VLAN 100 Transit SVI
+
+``` cisco
+vlan 100
+ name FIREWALL-TRANSIT
+exit
+
+interface Vlan100
+ description TRANSIT-TO-FORTIGATE
+ ip address 10.255.100.1 255.255.255.252
+ no shutdown
+exit
+```
+
+### Explanation
+
+The SVI is the Layer 3 gateway for the transit VLAN on the Core Switch.
+
+-   Core Switch: `10.255.100.1`
+-   FortiGate: `10.255.100.2`
+
+------------------------------------------------------------------------
+
+## 6.5 Client VLAN SVIs
+
+``` cisco
+interface Vlan10
+ ip address 192.168.1.1 255.255.255.0
+ no shutdown
+exit
+
+interface Vlan20
+ ip address 192.168.2.1 255.255.255.0
+ no shutdown
+exit
+
+interface Vlan30
+ ip address 192.168.3.1 255.255.255.0
+ no shutdown
+exit
+
+interface Vlan40
+ ip address 192.168.4.1 255.255.255.0
+ no shutdown
+exit
+```
+
+### SVI Summary
+
+  SVI        IP Address        Function
+  ---------- ----------------- --------------------
+  VLAN 10    192.168.1.1/24    Server gateway
+  VLAN 20    192.168.2.1/24    IT gateway
+  VLAN 30    192.168.3.1/24    Full House gateway
+  VLAN 40    192.168.4.1/24    In House gateway
+  VLAN 100   10.255.100.1/30   FortiGate transit
+
+------------------------------------------------------------------------
+
+## 6.6 Core-to-FortiGate Trunk
+
+Current configuration:
+
+``` cisco
+interface TenGigabitEthernet1/0/7
+ description TRUNK-TO-FORTIGATE
+ switchport trunk native vlan 999
+ switchport trunk allowed vlan 100
+ switchport mode trunk
+```
+
+### Explanation
+
+-   The port operates as an 802.1Q trunk.
+-   VLAN 100 is allowed on the trunk.
+-   VLAN 999 is configured as the native VLAN.
+-   The FortiGate transit interface uses VLAN ID 100.
+
+### Native VLAN 999
+
+Create the VLAN if it does not already exist:
+
+``` cisco
+vlan 999
+ name UNUSED-NATIVE
+exit
+```
+
+No SVI or DHCP pool is required for VLAN 999 in this design.
+
+> The native VLAN must be deliberately configured and matched as
+> required by the trunk design. Do not assume that a native VLAN is
+> automatically a security control by itself.
+
+------------------------------------------------------------------------
+
+## 6.7 Core Default Route
+
+``` cisco
+ip route 0.0.0.0 0.0.0.0 10.255.100.2
+```
+
+### Explanation
+
+The Core Switch forwards unknown destinations to the FortiGate.
+
+This is the default route toward the Internet firewall.
+
+------------------------------------------------------------------------
+
+# 7. Cisco L2 Access Switch Configuration
+
+## 7.1 Server VLAN Access Ports
+
+Ports `Gi1/0/1` through `Gi1/0/12`:
+
+``` cisco
+interface range GigabitEthernet1/0/1 - 12
+ description SERVER-VLAN
+ switchport access vlan 10
+ switchport mode access
+ spanning-tree portfast
+exit
+```
+
+------------------------------------------------------------------------
+
+## 7.2 IT Department Access Ports
+
+Ports `Gi1/0/13` through `Gi1/0/24`:
+
+``` cisco
+interface range GigabitEthernet1/0/13 - 24
+ description IT-DEPT-VLAN
+ switchport access vlan 20
+ switchport mode access
+ spanning-tree portfast
+exit
+```
+
+------------------------------------------------------------------------
+
+## 7.3 Full House Department Access Ports
+
+Ports `Gi1/0/25` through `Gi1/0/36`:
+
+``` cisco
+interface range GigabitEthernet1/0/25 - 36
+ description FULL-HOUSE-DEPT
+ switchport access vlan 30
+ switchport mode access
+ spanning-tree portfast
+exit
+```
+
+------------------------------------------------------------------------
+
+## 7.4 In House Department Access Ports
+
+Ports `Gi1/0/37` through `Gi1/0/48`:
+
+``` cisco
+interface range GigabitEthernet1/0/37 - 48
+ description IN-HOUSE-DEPT-VLAN
+ switchport access vlan 40
+ switchport mode access
+ spanning-tree portfast
+exit
+```
+
+------------------------------------------------------------------------
+
+## 7.5 L2 Access Switch Trunk Uplink
+
+Current configuration:
+
+``` cisco
+interface GigabitEthernet1/1/4
+ description TRUNK-Switch100
+ switchport trunk native vlan 100
+ switchport trunk allowed vlan 10-40,100
+ switchport mode trunk
+```
+
+### Explanation
+
+This trunk carries:
+
+-   VLAN 10
+-   VLAN 20
+-   VLAN 30
+-   VLAN 40
+-   VLAN 100
+
+The native VLAN is 100 on this uplink according to the provided
+configuration.
+
+> The Core-to-Access trunk and Core-to-FortiGate trunk use different
+> native VLAN settings in the supplied configuration. Document them
+> separately and ensure each link's two endpoints agree on the intended
+> native VLAN behavior.
+
+------------------------------------------------------------------------
+
+# 8. Verification Commands
+
+## 8.1 Cisco L3 Core Switch
+
+### Check SVI Status
+
+``` cisco
+show ip interface brief
+```
+
+Expected important interfaces:
+
+``` text
+Vlan10    192.168.1.1    up    up
+Vlan20    192.168.2.1    up    up
+Vlan30    192.168.3.1    up    up
+Vlan40    192.168.4.1    up    up
+Vlan100   10.255.100.1   up    up
+```
+
+### Check Routing Table
+
+``` cisco
+show ip route
+```
+
+Expected default route:
+
+``` text
+S* 0.0.0.0/0 [1/0] via 10.255.100.2
+```
+
+### Check Trunks
+
+``` cisco
+show interfaces trunk
+```
+
+### Test FortiGate Transit IP
+
+``` cisco
+ping 10.255.100.2
+```
+
+The supplied test showed:
+
+``` text
+Success rate is 100 percent (5/5)
+```
+
+This verifies ICMP reachability from the Core Switch to the FortiGate
+transit IP at the time of testing.
+
+### Check DHCP Bindings
+
+``` cisco
+show ip dhcp binding
+```
+
+### Check DHCP Pool Statistics
+
+``` cisco
+show ip dhcp pool
+```
+
+------------------------------------------------------------------------
+
+## 8.2 FortiGate-80F
+
+### Show Interfaces
+
+``` fortigate
+show system interface
+```
+
+### Show Specific Transit Interface
+
+``` fortigate
+show system interface "FW-TRANSIT"
+```
+
+### Check Routing Table
+
+``` fortigate
+get router info routing-table all
+```
+
+### Show Static Routes
+
+``` fortigate
+show router static
+```
+
+### Show Firewall Policies
+
+``` fortigate
+show firewall policy
+```
+
+### Test the Core Switch Transit IP
+
+``` fortigate
+execute ping 10.255.100.1
+```
+
+### Check System Information
+
+``` fortigate
+get system status
+```
+
+------------------------------------------------------------------------
+
+## 8.3 Cisco L2 Access Switch
+
+### Check VLANs
+
+``` cisco
+show vlan brief
+```
+
+### Check Trunk Status
+
+``` cisco
+show interfaces trunk
+```
+
+### Check Interface Status
+
+``` cisco
+show interfaces status
+```
+
+### Check MAC Address Table
+
+``` cisco
+show mac address-table
+```
+
+------------------------------------------------------------------------
+
+# 9. End-to-End Testing Procedure
+
+Perform the tests in this order.
+
+## Step 1: Test the client gateway
+
+From a client in VLAN 20:
+
+``` text
+ping 192.168.2.1
+```
+
+Expected: Successful response from the Core Switch SVI.
+
+## Step 2: Test the FortiGate transit IP
+
+``` text
+ping 10.255.100.2
+```
+
+Expected: The client can reach the FortiGate transit interface if
+routing and firewall policies permit it.
+
+## Step 3: Test Internet IP connectivity
+
+``` text
+ping 8.8.8.8
+```
+
+Expected: A response if ICMP is permitted and Internet connectivity is
+functioning.
+
+## Step 4: Test DNS resolution
+
+``` text
+nslookup google.com
+```
+
+Expected: A valid DNS response.
+
+## Step 5: Test web access
+
+Open a website in the browser.
+
+If IP ping works but web access fails, check:
+
+-   DNS configuration
+-   Firewall policy
+-   NAT
+-   WAN connectivity
+-   FortiGate security profiles
+-   Return routing
+
+------------------------------------------------------------------------
+
+# 10. Troubleshooting Checklist
+
+## Problem: Core Switch cannot ping FortiGate
+
+Check:
+
+``` cisco
+show interfaces trunk
+show ip interface brief
+show vlan brief
+```
+
+FortiGate:
+
+``` fortigate
+show system interface "FW-TRANSIT"
+get router info routing-table all
+```
+
+Possible causes:
+
+-   VLAN 100 is not allowed on the trunk.
+-   Incorrect FortiGate parent interface.
+-   VLAN ID mismatch.
+-   Physical link problem.
+-   Incorrect IP address or subnet mask.
+
+------------------------------------------------------------------------
+
+## Problem: Client receives DHCP but no Internet
+
+Check:
+
+1.  Client default gateway.
+2.  Core Switch default route.
+3.  FortiGate route back to the client VLAN.
+4.  Firewall policy from `FW-TRANSIT` to the WAN.
+5.  NAT enabled on the correct policy.
+6.  FortiGate WAN connectivity.
+
+Core Switch:
+
+``` cisco
+show ip route
+show ip dhcp binding
+```
+
+FortiGate:
+
+``` fortigate
+get router info routing-table all
+show firewall policy
+```
+
+------------------------------------------------------------------------
+
+## Problem: Client cannot receive DHCP
+
+Check:
+
+``` cisco
+show ip dhcp pool
+show ip dhcp binding
+show ip interface brief
+```
+
+Verify:
+
+-   The correct VLAN is assigned to the access port.
+-   The SVI is up/up.
+-   The DHCP pool matches the VLAN subnet.
+-   The DHCP excluded range does not consume all available addresses.
+-   The client is connected to the correct access VLAN.
+
+------------------------------------------------------------------------
+
+# 11. Key Learning Points
+
+## VLAN
+
+A VLAN logically separates Layer 2 networks.
+
+## SVI
+
+An SVI provides a Layer 3 interface for a VLAN. In this lab, the Core
+Switch SVI is the default gateway for each client VLAN.
+
+## Trunk
+
+A trunk carries traffic for multiple VLANs between network devices.
+
+## Native VLAN
+
+The native VLAN is used for untagged traffic on an 802.1Q trunk. The two
+endpoints must be designed and configured consistently.
+
+## Static Routing
+
+Static routing manually defines the next hop or path to a destination
+network.
+
+## Default Route
+
+A default route is used when no more specific route exists.
+
+## DHCP
+
+DHCP automatically provides client IP configuration, including:
+
+-   IP address
+-   Subnet mask
+-   Default gateway
+-   DNS server
+
+## Firewall Policy
+
+A FortiGate firewall policy controls whether traffic is allowed between
+interfaces and can apply NAT and security processing.
+
+------------------------------------------------------------------------
+
+# 12. Configuration Summary
+
+  Component                   Responsibility
+  --------------------------- -----------------------------------------
+  FortiGate WAN1/WAN2         ISP connectivity through DHCP
+  FortiGate FW-TRANSIT        VLAN 100 transit interface
+  FortiGate static routes     Return path to internal VLANs
+  FortiGate firewall policy   Permit and NAT Internet-bound traffic
+  Core Switch SVIs            Default gateways and inter-VLAN routing
+  Core Switch DHCP            IP address assignment to clients
+  Core Switch default route   Forward unknown traffic to FortiGate
+  Core-to-FortiGate trunk     Carries VLAN 100
+  Core-to-Access trunk        Carries VLANs 10-40 and 100
+  L2 Access ports             Assign clients to their VLANs
+
+------------------------------------------------------------------------
+
+# 13. Useful GitHub Practice Workflow
+
+1.  Build the topology.
+2.  Create the VLANs.
+3.  Configure the Core Switch SVIs.
+4.  Configure DHCP pools.
+5.  Configure the Core-to-FortiGate transit VLAN.
+6.  Configure the FortiGate VLAN interface.
+7.  Configure Core Switch default routing.
+8.  Configure FortiGate return routes.
+9.  Configure the firewall policy and NAT.
+10. Configure Access Switch access ports.
+11. Configure the Access Switch trunk.
+12. Verify each layer before proceeding.
+13. Save the final working configuration and document the test results.
+
+------------------------------------------------------------------------
+
+# 14. Important Production Notes
+
+-   Review management access such as HTTP, HTTPS, SSH, and ping before
+    production deployment.
+-   Do not expose unnecessary management services on WAN interfaces.
+-   Use restrictive firewall policies instead of broad `all` rules where
+    practical.
+-   Confirm the correct FortiGate physical parent interface before
+    changing the hardware-switch configuration.
+-   Verify native VLAN consistency on each trunk.
+-   Keep a backup of the working configuration before major changes.
+-   Record firmware versions and interface mappings in the
+    documentation.
+
+------------------------------------------------------------------------
+
+## 15. Quick Review Questions
+
+1.  Why is the Core Switch the default gateway for VLAN 20?
+2.  What is the purpose of VLAN 100 in this design?
+3.  Why does the Core Switch need a default route to `10.255.100.2`?
+4.  Why does the FortiGate need routes back to `192.168.1.0/24` through
+    `192.168.4.0/24`?
+5.  What is the difference between the Core-to-Access trunk and the
+    Core-to-FortiGate trunk?
+6.  What is the purpose of native VLAN 999?
+7.  Why is DHCP configured on the Core Switch instead of the FortiGate?
+8.  What commands would you use to verify the complete traffic path?
+
+------------------------------------------------------------------------
+
+## 16. Final Architecture Summary
+
+The Cisco L3 Core Switch acts as the internal routing and DHCP device.
+The FortiGate-80F acts as the security gateway toward the Internet. VLAN
+100 provides the transit connection between the two devices, while VLANs
+10, 20, 30, and 40 provide separate internal networks for the different
+departments.
+
+The architecture uses static routing between the Core Switch and
+FortiGate rather than OSPF.
