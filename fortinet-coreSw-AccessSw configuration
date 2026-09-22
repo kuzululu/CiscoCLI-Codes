@@ -967,3 +967,13 @@ departments.
 
 The architecture uses static routing between the Core Switch and
 FortiGate rather than OSPF.
+
+-------------------------------------------------------------------------
+
+Fortinet Firewall IP web GUI MAnagement Service
+for web access of 10.255.100.2
+config system interface
+    edit "FW-TRANSIT"
+        set allowaccess ping https
+    next
+end
