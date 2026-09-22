@@ -1,0 +1,236 @@
+
+# FortiGate-80F + Cisco L3 Core + L2 Access Switch
+
+## FortiGate-80F
+
+```fortigate
+config system interface
+    edit "wan1"
+        set mode dhcp
+        set allowaccess ping
+        set role wan
+    next
+    edit "wan2"
+        set mode dhcp
+        set allowaccess ping
+        set role wan
+    next
+    edit "FW-TRANSIT"
+        set ip 10.255.100.2 255.255.255.252
+        set allowaccess ping https
+        set interface "internal"
+        set vlanid 100
+    next
+end
+```
+
+### Static Routes
+
+```fortigate
+config router static
+    edit 0
+        set dst 192.168.1.0 255.255.255.0
+        set gateway 10.255.100.1
+        set device "FW-TRANSIT"
+    next
+    edit 0
+        set dst 192.168.2.0 255.255.255.0
+        set gateway 10.255.100.1
+        set device "FW-TRANSIT"
+    next
+    edit 0
+        set dst 192.168.3.0 255.255.255.0
+        set gateway 10.255.100.1
+        set device "FW-TRANSIT"
+    next
+    edit 0
+        set dst 192.168.4.0 255.255.255.0
+        set gateway 10.255.100.1
+        set device "FW-TRANSIT"
+    next
+end
+```
+
+### Firewall Policy
+
+```fortigate
+config firewall policy
+    edit 0
+        set name "LAN-to-Internet"
+        set srcintf "FW-TRANSIT"
+        set dstintf "wan1"
+        set srcaddr "all"
+        set dstaddr "all"
+        set action accept
+        set schedule "always"
+        set service "ALL"
+        set nat enable
+    next
+end
+```
+
+---
+
+## Cisco L3 Core Switch
+
+```cisco
+enable
+configure terminal
+
+ip routing
+
+vlan 100
+ name FIREWALL-TRANSIT
+exit
+
+vlan 999
+ name UNUSED-NATIVE
+exit
+```
+
+### SVIs
+
+```cisco
+interface Vlan10
+ ip address 192.168.1.1 255.255.255.0
+ no shutdown
+exit
+
+interface Vlan20
+ ip address 192.168.2.1 255.255.255.0
+ no shutdown
+exit
+
+interface Vlan30
+ ip address 192.168.3.1 255.255.255.0
+ no shutdown
+exit
+
+interface Vlan40
+ ip address 192.168.4.1 255.255.255.0
+ no shutdown
+exit
+
+interface Vlan100
+ ip address 10.255.100.1 255.255.255.252
+ no shutdown
+exit
+```
+
+### Default Route
+
+```cisco
+ip route 0.0.0.0 0.0.0.0 10.255.100.2
+```
+
+### Core-to-FortiGate Trunk
+
+```cisco
+interface TenGigabitEthernet1/0/7
+ switchport trunk native vlan 999
+ switchport trunk allowed vlan 100
+ switchport mode trunk
+```
+
+### DHCP
+
+```cisco
+ip dhcp excluded-address 192.168.1.1 192.168.1.50
+ip dhcp excluded-address 192.168.2.1 192.168.2.100
+ip dhcp excluded-address 192.168.3.1 192.168.3.150
+ip dhcp excluded-address 192.168.4.1 192.168.4.200
+```
+
+```cisco
+ip dhcp pool SERVERPOOL
+ network 192.168.1.0 255.255.255.0
+ default-router 192.168.1.1
+ dns-server 8.8.8.8
+
+ip dhcp pool ITDEPT-POOL
+ network 192.168.2.0 255.255.255.0
+ default-router 192.168.2.1
+ dns-server 8.8.8.8
+
+ip dhcp pool FULLHOUSEDEPT-POOL
+ network 192.168.3.0 255.255.255.0
+ default-router 192.168.3.1
+ dns-server 8.8.8.8
+
+ip dhcp pool INHOUSEDEPT-POOL
+ network 192.168.4.0 255.255.255.0
+ default-router 192.168.4.1
+ dns-server 8.8.8.8
+```
+
+---
+
+## Cisco L2 Access Switch
+
+### Access Ports
+
+```cisco
+interface range GigabitEthernet1/0/1 - 12
+ switchport access vlan 10
+ switchport mode access
+ spanning-tree portfast
+exit
+
+interface range GigabitEthernet1/0/13 - 24
+ switchport access vlan 20
+ switchport mode access
+ spanning-tree portfast
+exit
+
+interface range GigabitEthernet1/0/25 - 36
+ switchport access vlan 30
+ switchport mode access
+ spanning-tree portfast
+exit
+
+interface range GigabitEthernet1/0/37 - 48
+ switchport access vlan 40
+ switchport mode access
+ spanning-tree portfast
+exit
+```
+
+### Trunk Uplink
+
+```cisco
+interface GigabitEthernet1/1/4
+ switchport trunk native vlan 100
+ switchport trunk allowed vlan 10-40,100
+ switchport mode trunk
+```
+
+---
+
+## Verification Commands
+
+### Cisco
+
+```cisco
+show ip interface brief
+show ip route
+show interfaces trunk
+show ip dhcp binding
+ping 10.255.100.2
+```
+
+### FortiGate
+
+```fortigate
+get router info routing-table all
+show firewall policy
+execute ping 10.255.100.1
+```
+
+### End-to-End Testing
+
+```text
+ping 192.168.2.1
+ping 10.255.100.2
+ping 8.8.8.8
+nslookup google.com
+```
