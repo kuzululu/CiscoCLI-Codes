@@ -220,7 +220,7 @@ the Core Switch.
 config router static
     edit 0
         set dst 192.168.1.0 255.255.255.0
-        set gateway 10.255.100.1
+        set gateway 10.255.100.1 !gateway is the SVI vlan100 in coreswitch
         set device "FW-TRANSIT"
     next
     edit 0
@@ -263,10 +263,10 @@ Example policy for testing LAN-to-Internet connectivity:
 config firewall policy
     edit 0
         set name "LAN-to-Internet"
-        set srcintf "FW-TRANSIT"
-        set dstintf "wan1"
-        set srcaddr "all"
-        set dstaddr "all"
+        set srcintf "FW-TRANSIT" !srcintf = source interface
+        set dstintf "wan1" ! dstintf = destination interface
+        set srcaddr "all" !srcaddr = source address
+        set dstaddr "all" !dstaddr = destination address
         set action accept
         set schedule "always"
         set service "ALL"
