@@ -1,0 +1,96 @@
+1. CoreSwitch (L3)
+
+Management IP: 192.168.6.1
+
+enable
+configure terminal
+
+vlan 40
+ name Sw-Ip-Mgmt-VLAN
+exit
+
+interface vlan 40
+ description CoreSwitch-Management
+ ip address 192.168.6.1 255.255.255.0
+ no shutdown
+exit
+
+ip routing
+
+end
+write memory
+
+----------------------------------------------------
+
+2. Access Switch (L2)
+
+Management IP: 192.168.6.2
+
+enable
+configure terminal
+
+vlan 40
+ name Sw-Ip-Mgmt-VLAN
+exit
+
+interface vlan 40
+ description AccessSwitch-Management
+ ip address 192.168.6.2 255.255.255.0
+ no shutdown
+exit
+
+ip default-gateway 192.168.6.1 !ip address ng coreswitch SVI
+
+end
+write memory
+
+-----------------------------------------------------------
+
+3. CoreSwitch ↔ Access Switch
+
+Dahil mayroon kang iba't ibang VLAN, gamitin ang trunk sa uplink kung kailangan mong dalhin ang VLAN 40 at iba pang VLANs.
+
+CoreSwitch – Te1/0/13
+
+interface TenGigabitEthernet1/0/13
+ description Trunk-to-AccessSwitch
+ switchport mode trunk
+ switchport trunk native vlan 100 !optional 
+ switchport trunk allowed vlan 10,20,30,40
+ no shutdown
+exit
+
+Access Switch – Gi1/0/26
+
+interface GigabitEthernet1/0/26
+ description Trunk-to-CoreSwitch
+ switchport mode trunk
+switchport trunk native vlan 100 !optional 
+ switchport trunk allowed vlan 10,20,30,40
+ no shutdown
+exit
+
+--------------------------------------------------------
+
+Ping test
+
+Mula sa PC:
+
+ping 192.168.6.1
+ping 192.168.6.2
+
+-----------------------------------------------
+creating local user and password for switch ip management
+
+enable
+configure terminal
+
+username admin privilege 15 secret 123
+
+line vty 0 15
+ login local
+ transport input ssh
+ exit
+
+end
+write memory
