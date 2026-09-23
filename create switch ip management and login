@@ -55,7 +55,7 @@ CoreSwitch – Te1/0/13
 interface TenGigabitEthernet1/0/13
  description Trunk-to-AccessSwitch
  switchport mode trunk
- switchport trunk native vlan 100 !optional 
+ switchport trunk native vlan 100 !optional if available
  switchport trunk allowed vlan 10,20,30,40
  no shutdown
 exit
@@ -64,8 +64,8 @@ Access Switch – Gi1/0/26
 
 interface GigabitEthernet1/0/26
  description Trunk-to-CoreSwitch
- switchport mode trunk
-switchport trunk native vlan 100 !optional 
+ switchport mode trunk 
+switchport trunk native vlan 100 !optional if available
  switchport trunk allowed vlan 10,20,30,40
  no shutdown
 exit
