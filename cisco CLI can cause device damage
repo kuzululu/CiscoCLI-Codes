@@ -1,0 +1,7 @@
+Command Posibleng epekto
+
+config 
+ debug all !@Mataas na CPU utilization
+ no spanning-tree vlan 10 !@Maaaring magdulot ng Layer 2 loop at broadcast storm
+ debug ip packet !@Mabigat na processing kapag maraming packets
+ show tech-support !@Pansamantalang mataas na CPU load sa ilang modelo
