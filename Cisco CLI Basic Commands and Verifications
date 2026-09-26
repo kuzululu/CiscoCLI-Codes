@@ -88,6 +88,12 @@ no shut
 
 verification
 sh ip route
+
+coreSwitch Link papuntang CME Router
+description VOICE-ACCESS-MODE
+ switchport access vlan 40
+ switchport mode access
+ spanning-tree portfast
 ----------------------------------------------
 ----------------------------------------------
 
