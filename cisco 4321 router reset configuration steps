@@ -1,0 +1,457 @@
+# Cisco ISR 4321 Password Recovery & Factory Reset
+
+## Device Information
+- Model: Cisco ISR 4321
+- Platform: ISR4321/K9
+- Console: MobaXterm
+- Console Port: COM7
+- Console Speed: 9600
+- IOS Image: `isr4300-universalk9.16.08.01.SPA.bin`
+
+## 1. Connect via Console
+
+Connect the PC to the Cisco ISR 4321 using the console cable.
+
+MobaXterm settings:
+
+    Session → Serial
+    Port: COM7
+    Speed: 9600
+    Flow Control: None
+
+## 2. Power Cycle the Router
+
+1. Power OFF the router.
+2. Wait approximately 5 seconds.
+3. Power ON the router.
+4. Monitor the console output.
+
+## 3. Interrupt Boot Using BREAK
+
+Wait until the router starts loading the IOS image.
+
+Typical output:
+
+    System Bootstrap, Version 16.7(3r)
+
+    Current image running: Boot ROM0
+
+    Located isr4300-universalk9.16.08.01.SPA.bin
+
+    ########################################
+    ########################################
+
+### BREAK Timing
+
+For this ISR 4321, the successful BREAK timing was while the green `#` characters were actively loading.
+
+In MobaXterm:
+
+    Right-click terminal
+    → Special Command
+    → Break
+
+Send BREAK once.
+
+Do not repeatedly send BREAK.
+
+Successful result:
+
+    rommon 1 >
+
+## 4. Verify ROMMON
+
+At:
+
+    rommon 1 >
+
+Run:
+
+    set
+
+Then:
+
+    dir bootflash:
+
+Verify that the IOS image exists:
+
+    isr4300-universalk9.16.08.01.SPA.bin
+
+Example:
+
+    572357093  -rw-  isr4300-universalk9.16.08.01.SPA.bin
+
+IMPORTANT: Do not delete or format the IOS image.
+
+## 5. Set Password-Recovery Configuration Register
+
+At the ROMMON prompt:
+
+    confreg 0x2142
+
+Expected message:
+
+    You must reset or power cycle for new config to take effect
+
+This confirms that the configuration register was accepted.
+
+## 6. Reset the Router
+
+At the ROMMON prompt:
+
+    reset
+
+Press Enter.
+
+Do NOT press BREAK again.
+
+Allow the router to boot normally.
+
+`0x2142` causes the router to bypass the existing startup configuration during this boot.
+
+## 7. Enter IOS Without the Old Password
+
+After booting:
+
+    Router>
+
+Enter:
+
+    enable
+
+Expected:
+
+    Router#
+
+The old enable password should not be required because the startup configuration was bypassed.
+
+## 8. VERIFY BEFORE ERASING
+
+Before performing the actual configuration wipe, check the router.
+
+### Check Configuration Register
+
+    show version
+
+Look for:
+
+    Configuration register is 0x2142
+
+### Check Bootflash
+
+    dir bootflash:
+
+Verify:
+
+    isr4300-universalk9.16.08.01.SPA.bin
+
+Do not delete this file.
+
+### Check Running Configuration
+
+    show running-config
+
+The running configuration may contain the previous configuration.
+
+DO NOT save it.
+
+Do NOT run:
+
+    copy running-config startup-config
+
+or:
+
+    write memory
+
+### Check Startup Configuration
+
+    show startup-config
+
+This allows you to verify the existing startup configuration.
+
+## 9. Erase the Existing Configuration
+
+If the goal is to completely remove the old configuration:
+
+    erase startup-config
+
+When prompted:
+
+    Erasing the nvram filesystem will remove all configuration files!
+    Continue? [confirm]
+
+Press:
+
+    Enter
+
+IMPORTANT:
+
+If `erase startup-config` reports an NVRAM error, STOP.
+
+Do not randomly format or delete storage files.
+
+## 10. Restore the Normal Configuration Register
+
+After successfully clearing the startup configuration:
+
+    configure terminal
+
+Then:
+
+    config-register 0x2102
+
+Exit configuration mode:
+
+    end
+
+Verify:
+
+    show version
+
+Expected:
+
+    Configuration register is 0x2102
+
+`0x2102` is the normal boot configuration.
+
+## 11. Reload the Router
+
+Run:
+
+    reload
+
+If prompted:
+
+    System configuration has been modified. Save? [yes/no]:
+
+Answer:
+
+    no
+
+Do not save the previous running configuration.
+
+## 12. Initial Configuration Dialog
+
+After reboot, the router may display:
+
+    --- System Configuration Dialog ---
+
+    Would you like to enter the initial configuration dialog? [yes/no]:
+
+For a clean lab router:
+
+    no
+
+Press Enter.
+
+You should get:
+
+    Router>
+
+Then:
+
+    enable
+
+Expected:
+
+    Router#
+
+The old enable password should no longer exist.
+
+## 13. Final Verification
+
+Check the configuration register:
+
+    show version
+
+Expected:
+
+    Configuration register is 0x2102
+
+Check the running configuration:
+
+    show running-config
+
+The configuration should now be minimal/default.
+
+Check the startup configuration:
+
+    show startup-config
+
+The previous configuration should no longer be present.
+
+Check the IOS image:
+
+    dir bootflash:
+
+Verify that the IOS image remains:
+
+    isr4300-universalk9.16.08.01.SPA.bin
+
+# ROMMON Command Reference
+
+Display ROMMON variables:
+
+    set
+
+Display bootflash contents:
+
+    dir bootflash:
+
+Display configuration register:
+
+    confreg
+
+Ignore startup configuration on next boot:
+
+    confreg 0x2142
+
+Normal boot configuration:
+
+    confreg 0x2102
+
+Restart router from ROMMON:
+
+    reset
+
+# Configuration Register Reference
+
+| Register | Purpose |
+|---|---|
+| `0x2142` | Ignore startup configuration during boot / password recovery |
+| `0x2102` | Normal boot |
+
+# Complete Recovery Flow
+
+    Power OFF
+        ↓
+    Power ON
+        ↓
+    Wait for IOS image loading
+        ↓
+    Green # characters appear
+        ↓
+    BREAK
+        ↓
+    rommon 1 >
+        ↓
+    set
+        ↓
+    dir bootflash:
+        ↓
+    Verify IOS image
+        ↓
+    confreg 0x2142
+        ↓
+    reset
+        ↓
+    Router>
+        ↓
+    enable
+        ↓
+    show version
+        ↓
+    Verify 0x2142
+        ↓
+    dir bootflash:
+        ↓
+    Verify IOS image
+        ↓
+    show running-config
+        ↓
+    show startup-config
+        ↓
+    erase startup-config
+        ↓
+    configure terminal
+        ↓
+    config-register 0x2102
+        ↓
+    end
+        ↓
+    show version
+        ↓
+    Verify 0x2102
+        ↓
+    reload
+        ↓
+    NO
+        ↓
+    Initial Configuration Dialog
+        ↓
+    NO
+        ↓
+    Router>
+        ↓
+    enable
+        ↓
+    Router#
+
+# Important NVRAM / Bootflash Issue Observed
+
+During the recovery process, this ISR 4321 displayed:
+
+    % Failed to initialize nvram
+    % Failed to initialize backup nvram
+
+It also displayed:
+
+    %Error opening bootflash:/nvram (No such file or directory)
+
+At one point, the router also displayed:
+
+    Failed to find bootable image on device bootflash:
+    autoboot: boot failed, restarting...
+
+However, the IOS image was successfully found in bootflash:
+
+    isr4300-universalk9.16.08.01.SPA.bin
+
+Therefore:
+
+- Do not delete the IOS image.
+- Do not format `bootflash:`.
+- Do not format NVRAM.
+- Do not randomly delete bootflash files.
+- If `erase startup-config` reports an NVRAM/storage error, stop and investigate the storage issue first.
+
+# Key Lesson: BREAK Timing
+
+The successful BREAK timing on this ISR 4321 was:
+
+    System Bootstrap
+           ↓
+    Current image running: Boot ROM0
+           ↓
+    Located isr4300-universalk9.16.08.01.SPA.bin
+           ↓
+    ########################################
+    ########################################
+                     ↑
+                SEND BREAK
+                     ↓
+                 rommon 1 >
+
+The BREAK command was sent while the green `#` characters were actively loading.
+
+MobaXterm:
+
+    Right-click terminal
+    → Special Command
+    → Break
+
+Send BREAK once.
+
+The successful result is:
+
+    rommon 1 >
+
+# Final Result
+
+After completing the procedure:
+
+- Old password removed
+- Old startup configuration erased
+- Configuration register restored to `0x2102`
+- IOS image preserved
+- Router ready for new configuration
