@@ -92,8 +92,16 @@ At the ROMMON prompt:
 Expected message:
 
     You must reset or power cycle for new config to take effect
-
 This confirms that the configuration register was accepted.
+
+!Important Note:
+if not messange prompt "You must reset or power cycle for new config to take effect"
+Verify Firtst:
+type: confreg
+Ngayon nasa prompt ka:
+do you wish to change the configuration? y/n [n]:
+type: n
+then proceed to step 6
 
 ## 6. Reset the Router
 
