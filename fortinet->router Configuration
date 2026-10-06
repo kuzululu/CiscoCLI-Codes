@@ -1,0 +1,393 @@
+ISR4321 + FortiGate-80F Configuration
+
+Roles
+Device	Function
+ISR4321	Inter-VLAN routing + DHCP + default route
+L3 Core Switch	VLAN switching / trunk aggregation
+L2 Switch	Access switching
+FortiGate-80F	Firewall + Internet gateway + NAT
+VLAN 100	Router-to-FortiGate transit
+192.168.10.1	FortiGate internal LAN/management
+10.255.100.1	ISR4321 transit IP
+10.255.100.2	FortiGate transit IP
+
+
+Topology summary
+
+                         INTERNET
+                            |
+                     +-------------+
+                     | FortiGate   |
+                     |    80F      |
+                     +-------------+
+                      |           |
+                    WAN1        WAN2
+                    DHCP        DHCP
+                      |
+                      |
+               FW-TRANSIT VLAN 100
+                 10.255.100.2/30
+                      |
+                 802.1Q VLAN 100
+                      |
+              Gi0/0/1.100
+               10.255.100.1
+                     ISR4321
+                      |
+              Gi0/0/0 TRUNK
+                VLAN 10-40
+                      |
+                L3 Core Switch
+                      |
+                 L2 Access Switch
+                      |
+        +-------------+-------------+
+        |             |             |
+     VLAN 10       VLAN 20       VLAN 30       VLAN 40
+   192.168.1.0   192.168.2.0   192.168.3.0   192.168.4.0
+        |             |             |             |
+     Gateway       Gateway       Gateway       Gateway
+   192.168.1.1   192.168.2.1   192.168.3.1   192.168.4.1
+
+# ============================================================
+# NETWORK LAB CONFIGURATION
+# ISR4321 Router + FortiGate-80F
+# ============================================================
+
+# ============================================================
+# NETWORK ARCHITECTURE
+# ============================================================
+
+INTERNAL NETWORKS
+-----------------
+VLAN 10  = 192.168.1.0/24
+VLAN 20  = 192.168.2.0/24
+VLAN 30  = 192.168.3.0/24
+VLAN 40  = 192.168.4.0/24
+
+ROUTER GATEWAYS
+---------------
+VLAN 10 = 192.168.1.1
+VLAN 20 = 192.168.2.1
+VLAN 30 = 192.168.3.1
+VLAN 40 = 192.168.4.1
+
+ROUTER <-> FORTIGATE TRANSIT
+-----------------------------
+VLAN 100
+ISR4321      = 10.255.100.1/30
+FortiGate    = 10.255.100.2/30
+
+FORTIGATE INTERNAL MANAGEMENT/LAN
+----------------------------------
+192.168.10.1/24
+
+FORTIGATE WAN
+-------------
+WAN1 = DHCP
+WAN2 = DHCP
+
+
+# ============================================================
+# CISCO ISR4321
+# ============================================================
+
+hostname ISR-C4321
+
+!
+! DHCP
+!
+
+ip dhcp excluded-address 192.168.1.1 192.168.1.150
+ip dhcp excluded-address 192.168.2.1 192.168.2.220
+ip dhcp excluded-address 192.168.4.1
+
+!
+! VLAN 10 - JEFF VLAN
+!
+
+ip dhcp pool JEFF-VLAN
+ network 192.168.1.0 255.255.255.0
+ default-router 192.168.1.1
+ dns-server 8.8.8.8
+
+!
+! VLAN 20 - RONALD VLAN
+!
+
+ip dhcp pool RONALD-VLAN
+ network 192.168.2.0 255.255.255.0
+ default-router 192.168.2.1
+ dns-server 8.8.8.8
+ domain-name RONALD-VLAN.COM
+
+!
+! VLAN 30 - WIFI VLAN
+!
+
+ip dhcp pool WIFI-JEFFRONALD-VLAN
+ network 192.168.3.0 255.255.255.0
+ default-router 192.168.3.1
+ dns-server 8.8.8.8
+ domain-name WIFI-JEFFRONALD.COM
+
+!
+! VLAN 40 - IP Management
+!
+
+ip dhcp pool IP-MGMT
+ network 192.168.4.0 255.255.255.0
+ default-router 192.168.4.1
+ dns-server 8.8.8.8
+ domain-name IPMGMT.COM
+
+
+!
+! ============================================================
+! ROUTER TO CORE SWITCH
+! Gi0/0/0 = 802.1Q TRUNK
+! ============================================================
+!
+
+interface GigabitEthernet0/0/0
+ no ip address
+ negotiation auto
+
+!
+! VLAN 10
+!
+
+interface GigabitEthernet0/0/0.10
+ encapsulation dot1Q 10
+ ip address 192.168.1.1 255.255.255.0
+ ip nat inside
+
+!
+! VLAN 20
+!
+
+interface GigabitEthernet0/0/0.20
+ encapsulation dot1Q 20
+ ip address 192.168.2.1 255.255.255.0
+ ip nat inside
+
+!
+! VLAN 30
+!
+
+interface GigabitEthernet0/0/0.30
+ encapsulation dot1Q 30
+ ip address 192.168.3.1 255.255.255.0
+ ip nat inside
+
+!
+! VLAN 40
+!
+
+interface GigabitEthernet0/0/0.40
+ encapsulation dot1Q 40
+ ip address 192.168.4.1 255.255.255.0
+ ip nat inside
+
+
+!
+! ============================================================
+! ROUTER TO FORTIGATE
+! Gi0/0/1 = 802.1Q TRANSIT LINK
+! ============================================================
+!
+
+interface GigabitEthernet0/0/1
+ no ip address
+ negotiation auto
+
+!
+! VLAN 100 - FortiGate Transit
+!
+
+interface GigabitEthernet0/0/1.100
+ description TRANSIT-FORTIGATE
+ encapsulation dot1Q 100
+ ip address 10.255.100.1 255.255.255.252
+
+
+!
+! ============================================================
+! DEFAULT ROUTE TO FORTIGATE
+! ============================================================
+!
+
+ip route 0.0.0.0 0.0.0.0 10.255.100.2
+
+
+# ============================================================
+# FORTIGATE-80F
+# ============================================================
+
+config system interface
+
+    !
+    ! WAN1
+    !
+    edit "wan1"
+        set vdom "root"
+        set mode dhcp
+        set allowaccess ping
+        set type physical
+        set role wan
+        set snmp-index 1
+    next
+
+    !
+    ! WAN2
+    !
+    edit "wan2"
+        set vdom "root"
+        set mode dhcp
+        set allowaccess ping
+        set type physical
+        set role wan
+        set snmp-index 2
+    next
+
+    !
+    ! Physical Internal Ports
+    !
+
+    edit "internal1"
+        set vdom "root"
+        set type physical
+        set snmp-index 3
+    next
+
+    edit "internal2"
+        set vdom "root"
+        set type physical
+        set snmp-index 4
+    next
+
+    edit "internal3"
+        set vdom "root"
+        set type physical
+        set snmp-index 5
+    next
+
+    edit "internal4"
+        set vdom "root"
+        set type physical
+        set snmp-index 6
+    next
+
+    edit "internal5"
+        set vdom "root"
+        set type physical
+        set snmp-index 7
+    next
+
+    edit "internal6"
+        set vdom "root"
+        set type physical
+        set snmp-index 8
+    next
+
+    !
+    ! FortiLink Physical Interfaces
+    !
+
+    edit "a"
+        set vdom "root"
+        set type physical
+        set snmp-index 9
+    next
+
+    edit "b"
+        set vdom "root"
+        set type physical
+        set snmp-index 10
+    next
+
+    !
+    ! Modem
+    !
+
+    edit "modem"
+        set vdom "root"
+        set mode pppoe
+        set status down
+        set type physical
+        set snmp-index 11
+    next
+
+    !
+    ! Tunnel Interfaces
+    !
+
+    edit "naf.root"
+        set vdom "root"
+        set type tunnel
+        set src-check disable
+        set snmp-index 12
+    next
+
+    edit "l2t.root"
+        set vdom "root"
+        set type tunnel
+        set snmp-index 13
+    next
+
+    edit "ssl.root"
+        set vdom "root"
+        set type tunnel
+        set alias "SSL VPN interface"
+        set snmp-index 14
+    next
+
+    !
+    ! Internal LAN / Management
+    !
+
+    edit "internal"
+        set vdom "root"
+        set ip 192.168.10.1 255.255.255.0
+        set allowaccess ping https ssh fabric
+        set type hard-switch
+        set alias "INTERNAL-LAN"
+        set stp enable
+        set role lan
+        set snmp-index 15
+    next
+
+    !
+    ! FortiLink
+    !
+
+    edit "fortilink"
+        set vdom "root"
+        set fortilink enable
+        set ip 10.255.1.1 255.255.255.0
+        set allowaccess ping fabric
+        set type aggregate
+        set member "a" "b"
+        set lldp-reception enable
+        set lldp-transmission enable
+        set snmp-index 16
+    next
+
+    !
+    ! ========================================================
+    ! VLAN 100 TRANSIT TO ISR4321
+    ! ========================================================
+    !
+
+    edit "FW-TRANSIT"
+        set vdom "root"
+        set ip 10.255.100.2 255.255.255.252
+        set allowaccess ping https
+        set device-identification enable
+        set role lan
+        set snmp-index 17
+        set interface "internal"
+        set vlanid 100
+    next
+
+end
