@@ -4,6 +4,124 @@ interface GigabitEthernet0/0/0.40
  ip address 192.168.6.1 255.255.255.0
  no shutdown
 
+
+@Router
+enable
+configure terminal
+
+!
+! =========================================
+! VLAN 40 MANAGEMENT - ROUTER
+! =========================================
+!
+
+interface GigabitEthernet0/0/0
+ no ip address
+ no shutdown
+exit
+
+interface GigabitEthernet0/0/0.40
+ description VLAN40-Management
+ encapsulation dot1Q 40
+ ip address 192.168.4.1 255.255.255.0
+ ip nat inside
+ no shutdown
+exit
+
+! =========================================
+! LOCAL ADMIN USER
+! =========================================
+!
+
+username admin privilege 15 secret 123
+ip http authentication local
+
+! =========================================
+! SSH
+! =========================================
+!
+
+crypto key generate rsa modulus 2048
+
+ip ssh version 2
+
+line vty 0 4
+ login local
+ transport input ssh
+ exit
+
+!
+! =========================================
+! HTTPS WEB GUI
+! =========================================
+!
+
+no ip http server
+ip http secure-server
+ip http authentication local
+
+!
+! =========================================
+! SAVE
+! =========================================
+!
+
+end
+write memory
+
+!HTTP secure server trustpoint certificate
+enable
+configure terminal
+
+crypto pki trustpoint HTTPS-SELF-SIGNED
+ enrollment selfsigned
+ subject-name CN=ISR-C4321
+ rsakeypair HTTPS-SELF-SIGNED-KEY 2048
+ hash sha256
+exit
+
+crypto pki enroll HTTPS-SELF-SIGNED
+
+Pag nag-prompt:
+% Include the router serial number in the subject name? [yes/no]:
+
+sagot:
+no
+
+Then:
+% Include an IP address in the subject name? [no]:
+
+sagot:
+no
+
+Then:
+Generate Self Signed Router Certificate? [yes/no]:
+
+sagot:
+yes
+
+Cisco's documented procedure uses enrollment selfsigned, an RSA key pair, and crypto pki enroll to
+generate the persistent self-signed certificate. Cisco
+Pag successful
+Dapat makakuha ka ng message na parang:
+Router Self Signed Certificate successfully created
+
+Then sabihin natin sa HTTPS server na gamitin ang certificate:
+ip http secure-trustpoint HTTPS-SELF-SIGNED
+
+Then:
+end
+write memory
+
+Verify
+Run:
+show crypto pki certificates HTTPS-SELF-SIGNED
+
+at:
+show ip http server status
+
+-------------------------------------------
+
 @CoreSwitch — L2 management
 vlan 40
  name Sw-Ip-Mgmt-VLAN
