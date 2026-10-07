@@ -1,0 +1,44 @@
+!@Router
+interface GigabitEthernet0/0/0.40
+ encapsulation dot1Q 40
+ ip address 192.168.6.1 255.255.255.0
+ no shutdown
+
+@CoreSwitch — L2 management
+vlan 40
+ name Sw-Ip-Mgmt-VLAN
+exit
+
+interface vlan 40
+ description CoreSwitch-Management
+ ip address 192.168.6.2 255.255.255.0
+ no shutdown
+exit
+
+no ip routing
+ip default-gateway 192.168.6.1
+
+@AccessSwitch — L2 management
+vlan 40
+ name Sw-Ip-Mgmt-VLAN
+exit
+
+interface vlan 40
+ description AccessSwitch-Management
+ ip address 192.168.6.3 255.255.255.0
+ no shutdown
+exit
+
+username admin privilege 15 secret 123
+
+ip domain-name lab.local
+crypto key generate rsa modulus 2048
+
+line vty 0 15
+ login local
+ transport input ssh
+exit
+
+ip ssh version 2
+
+ip default-gateway 192.168.6.1
